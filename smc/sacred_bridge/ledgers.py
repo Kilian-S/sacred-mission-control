@@ -44,6 +44,7 @@ class Generation:
     instance: str = ""
     sha: str = ""
     tb_runs: tuple[str, ...] = field(default_factory=tuple)
+    figures: tuple[str, ...] = field(default_factory=tuple)
 
     @property
     def ledger_path(self) -> Path:
@@ -131,6 +132,7 @@ def load_narrative_index(
                 instance=g.get("instance", ""),
                 sha=g.get("sha", ""),
                 tb_runs=tuple(g.get("tb_runs", [])),
+                figures=tuple(g.get("figures", [])),
             )
         )
     return chapters, gens, div

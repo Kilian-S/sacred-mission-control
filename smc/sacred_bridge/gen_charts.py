@@ -1,0 +1,165 @@
+"""Chart data for History-tab generation cards, loaded from run JSONs in a
+worker thread. Returns plain dicts so the UI thread only plots."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+from . import runs
+from .runs import (
+    B1LITE_HISTORY_FIELDS,
+    GENERALIST_HISTORY_FIELDS,
+    INTERDICTION_HISTORY_FIELDS,
+    MULTICONVOY_HISTORY_FIELDS,
+    HistorySeries,
+    RUNS_DIR,
+    multiconvoy_result,
+    read_json,
+)
+
+# Which JSON stems make the canonical trajectory chart per generation id.
+_FAMILY_SPECS: dict[str, dict[str, Any]] = {
+    "gen08": {"family": "gen08_interdiction_I3", "glob": "B2P3_seed*.json", "kind": "interdiction",
+              "note": "B2-P3, the banked single-convoy run (pre-fix era)"},
+    "gen09": {"family": "gen09_multiconvoy", "glob": "headline_seed*.json", "kind": "multiconvoy",
+              "note": "gen09-HEADLINE: best checkpoint ~sortie 400-500, then the disclosed drift"},
+    "gen10": {"family": "gen10_postfix", "glob": "B2P3_seed*.json", "kind": "interdiction",
+              "note": "gen10-SC re-run (post-fix): the single-convoy primary replicates"},
+    "gen11": {"family": "gen11_menuhead", "glob": "*_seed*.json", "kind": "multiconvoy_arms",
+              "note": "six arms x three seeds; no arm beats the plateau"},
+    "gen12": {"family": "gen12_sweeps", "glob": "hl_N3K1_seed*.json", "kind": "multiconvoy",
+              "note": "headline cell 62-97 N=3 K=1 (three seeds); sweep curves live in Objectives"},
+    "gen13": {"family": "gen13_lock", "glob": "seed*.json", "kind": "multiconvoy",
+              "note": "the lock on 35-159: tight best checkpoints, drift disclosed"},
+    "gen14": {"family": "gen14_evidence", "glob": "mc_seed*.json", "kind": "multiconvoy",
+              "note": "n=10 seeds on 35-159 (the citable CI)"},
+    "gen15": {"family": "gen15_generalist", "glob": "seed*.json", "kind": "generalist",
+              "note": "held-out ratio (solid) vs train ratio (dashed) per seed"},
+    "gen16": {"family": "gen16_multicity", "glob": "seed*.json", "kind": "generalist",
+              "note": "held-out CITY (Gdansk) ratio (solid) vs train ratio (dashed)"},
+    "gen17": {"family": "gen17_lastiterate", "glob": "seed*.json", "kind": "multiconvoy",
+              "note": "annealed tau does not hold the tail; best checkpoints in the gen14 band"},
+    "gen18": {"family": "gen18_learnedfollower", "glob": "seed*.json", "kind": "multiconvoy",
+              "note": "learned followers: exploitability of the partially-coordinated fleet"},
+    "gen19": {"family": "gen19_b1lite1", "glob": "seed*.json", "kind": "b1lite",
+              "note": "per-sortie mission-failure vs the pattern-of-life adversary"},
+}
+
+
+def has_chart(gen_id: str) -> bool:
+    return gen_id in _FAMILY_SPECS or gen_id == "zst0"
+
+
+def load_gen_chart(gen_id: str) -> dict[str, Any]:
+    """Returns {kind, note, series: [...], refs: {...}, sources: [paths]} or {error}."""
+    if gen_id == "zst0":
+        return _load_zst0()
+    spec = _FAMILY_SPECS.get(gen_id)
+    if spec is None:
+        return {"error": "no chart specification"}
+    d = RUNS_DIR / spec["family"]
+    files = sorted(d.glob(spec["glob"])) if d.is_dir() else []
+    if not files:
+        return {"error": f"no run JSONs found under models/runs/{spec['family']}"}
+
+    kind = spec["kind"]
+    series: list[dict[str, Any]] = []
+    refs: dict[str, float] = {}
+    sources: list[str] = []
+
+    for path in files:
+        rf = read_json(path)
+        if not rf.ok:
+            continue
+        data = rf.data
+        sources.append(str(path.relative_to(RUNS_DIR)))
+        label = path.stem
+
+        if kind in ("multiconvoy", "multiconvoy_arms"):
+            result = multiconvoy_result(data)
+            if not result:
+                continue
+            hs = HistorySeries.from_rows(result["history"], MULTICONVOY_HISTORY_FIELDS)
+            series.append({
+                "label": label,
+                "x": hs.col("sortie"),
+                "y": hs.col("expl_tap"),
+                "best": result.get("best_tap"),
+                "best_at": result.get("best_tap_sortie"),
+                "arm": label.split("_seed")[0] if kind == "multiconvoy_arms" else "",
+            })
+            if "loss_mixed" in data:
+                refs["equilibrium"] = data["loss_mixed"]
+            if isinstance(data.get("baselines"), dict):
+                refs.update({k: v for k, v in data["baselines"].items() if isinstance(v, (int, float))})
+
+        elif kind == "interdiction":
+            arms = data.get("arms", {})
+            for arm_name in ("vanilla", "sacred"):
+                arm = arms.get(arm_name)
+                if not isinstance(arm, dict) or "history" not in arm:
+                    continue
+                hs = HistorySeries.from_rows(arm["history"], INTERDICTION_HISTORY_FIELDS)
+                series.append({
+                    "label": f"{arm_name} {label.split('_')[-1]}",
+                    "x": hs.col("sortie"),
+                    "y": hs.col("expl_tap"),
+                    "arm": arm_name,
+                })
+            refs.setdefault("equilibrium", data.get("loss_mixed"))
+            refs.setdefault("shortest_path", 1.0 if data.get("loss_det") else None)
+            if isinstance(arms.get("uniform"), dict):
+                refs.setdefault("uniform", arms["uniform"].get("expl_tap"))
+
+        elif kind == "generalist":
+            hs = HistorySeries.from_rows(data["history"], GENERALIST_HISTORY_FIELDS)
+            series.append({
+                "label": label,
+                "x": hs.col("sortie"),
+                "y": hs.col("test_ratio"),
+                "y2": hs.col("train_ratio"),
+                "best": data.get("best_test_ratio"),
+            })
+
+        elif kind == "b1lite":
+            hs = HistorySeries.from_rows(data["history"], B1LITE_HISTORY_FIELDS)
+            series.append({
+                "label": label,
+                "x": hs.col("sortie"),
+                "y": hs.col("eval_loss"),
+                "best": data.get("best"),
+            })
+            for k in ("static_det", "iid_eq", "history_opt"):
+                v = (data.get("refs") or {}).get(k)
+                if isinstance(v, (int, float)):
+                    refs[k] = v
+
+    refs = {k: v for k, v in refs.items() if isinstance(v, (int, float))}
+    if not series:
+        return {"error": "run JSONs present but unreadable (possibly mid-write); try again"}
+    return {"kind": kind, "note": spec["note"], "series": series, "refs": refs, "sources": sources}
+
+
+def _load_zst0() -> dict[str, Any]:
+    rf = read_json(RUNS_DIR / "zst_step0.json")
+    if not rf.ok:
+        return {"error": "models/runs/zst_step0.json unavailable"}
+    d = rf.data
+    tr = d.get("transfer", {})
+    ri = d.get("random_init_reference", {})
+    bars = [
+        ("shortest (anchor)", tr.get("shortest")),
+        ("uniform (anchor)", tr.get("uniform")),
+        ("transferred policy", tr.get("expl")),
+        ("random-init net", ri.get("expl")),
+        ("equilibrium (anchor)", tr.get("equilibrium")),
+    ]
+    bars = [(k, v) for k, v in bars if isinstance(v, (int, float))]
+    return {
+        "kind": "bars",
+        "note": "held-out OD 110-135: the transferred policy loses to an untrained net",
+        "series": [{"label": k, "y": v} for k, v in bars],
+        "refs": {},
+        "sources": ["zst_step0.json"],
+    }

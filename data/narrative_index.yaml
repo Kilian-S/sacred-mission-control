@@ -55,6 +55,7 @@ generations:
       per-step decisions are near-inconsequential and the adversary is toothless.
     demo: text
     tb_runs: ["sacred_atla_thesis_run_2000ep_sw50_b32_0614_170342", "protag_signal_rebalance_2000ep_sw50_b32_0617_135022", "protag_reward_shaping_2000ep_sw50_b32_0618_150523"]
+    figures: ["assets/kaliningrad_filter_compare.png", "assets/kaliningrad_demand_heatmap.png"]
 
   - id: stage0
     chapter: campaign
@@ -128,6 +129,7 @@ generations:
         quote: "`gap_noatk` ≈ **+348 (~+6%)**, low-variance → RL **reliably loses statically**"
     demo: chart
     tb_runs: ["gen02_dynassign/dynassign_seed0", "gen02_dynassign/dynassign_seed1"]
+    figures: ["scratch/dynassign_demo.gif", "scratch/dynassign_geometry.png"]
 
   - id: critique
     chapter: campaign
@@ -211,6 +213,7 @@ generations:
       exploitable surface.
     demo: chart
     tb_runs: ["gen05_hybrid_matrix/hybrid_vanilla_seed0"]
+    figures: ["scratch/hybrid_geometry.png"]
 
   - id: gen06
     chapter: campaign
@@ -259,6 +262,7 @@ generations:
       not a fixable optimisation issue. The constructive move: change the adversary to
       interdiction (hidden, irreversible, pre-committed), a Stackelberg security game.
     demo: text
+    figures: ["scratch/chokepoints.png"]
 
   # ---------------------------------------------------------------- interdiction
 

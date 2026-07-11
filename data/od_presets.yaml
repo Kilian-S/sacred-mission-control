@@ -1,0 +1,191 @@
+# Screened OD presets for the Playground instance picker.
+# Sources: the project's own screened instances (gen08/gen09/gen12/gen13 ledgers) and the
+# gen15/gen16 generalist train/test pools (models/runs/gen15_generalist/seed0.json,
+# models/runs/gen16_multicity/seed0.json). `banked:` anchors are verbatim ledger lines shown
+# beside live-computed numbers when the picker matches the banked cell; the provenance test
+# verifies each quote against its ledger.
+
+presets:
+  kaliningrad:
+    - od: "35-159"
+      label: "35-159 · THE post-fix headline instance"
+      k_extra: 8
+      N: 3
+      K: 1
+      note: "Screened by pre-registered criteria before any training (gen12/gen13); also the gen19 pattern-of-life instance."
+      banked:
+        - cell: "N=3 K=1"
+          era: post-fix
+          ledger: experiments/gen13_lock.md
+          items:
+            - label: "shortest_path (naive stack)"
+              value: 0.912
+              quote: "| shortest_path (naive stack) | 0.912 |"
+            - label: "ALNS (= loss_det)"
+              value: 0.699
+              quote: "| ALNS (= loss_det, the deterministic-class optimum) | 0.699 |"
+            - label: "SACRED best-checkpoint (gen14 n=10)"
+              value: 0.256
+              quote: "**mean 0.256, sd 0.014, 95% t-CI [0.246, 0.266]**"
+              ledger: experiments/gen14_evidence.md
+            - label: "equilibrium (loss_mixed)"
+              value: 0.206
+              quote: "| equilibrium (loss_mixed) | 0.206 |"
+    - od: "62-97"
+      label: "62-97 · the pre-fix headline instance (gen09)"
+      k_extra: 8
+      N: 3
+      K: 1
+      note: "Fork-A screened shared-edge instance; the banked SACRED number here is PRE-FIX era."
+      banked:
+        - cell: "N=3 K=1"
+          era: pre-fix
+          ledger: experiments/gen09_multiconvoy.md
+          items:
+            - label: "shortest_path (naive)"
+              value: 0.973
+              quote: "| shortest_path (naive) | 0.973 |"
+            - label: "ALNS (spreads)"
+              value: 0.699
+              quote: "| ALNS (SOTA metaheuristic, spreads) | 0.699 |"
+            - label: "SACRED best-checkpoint (pre-fix)"
+              value: 0.283
+              quote: "**SACRED (adversarial, best-checkpoint)** | **0.283 +/- 0.021**"
+            - label: "equilibrium (loss_mixed)"
+              value: 0.216
+              quote: "| equilibrium (loss_mixed) | 0.216 |"
+    - od: "33-71"
+      label: "33-71 · the single-convoy headline instance"
+      k_extra: 8
+      N: 1
+      K: 1
+      hard: true
+      note: "The shared-edge single-convoy game, hard interception (as banked)."
+      banked:
+        - cell: "N=1 K=1, hard interception"
+          era: post-fix
+          ledger: experiments/gen10_postfix.md
+          items:
+            - label: "banked ladder (gen10-SC, TAP, pooled)"
+              value: 0.276
+              quote: "Ladder (TAP, pooled): shortest 1.000 > vanilla 0.480 > uniform 0.455 > **sacred 0.276** >> equilibrium 0.167."
+    - od: "110-135"
+      label: "110-135 · B2-S / the ZST-0 target"
+      k_extra: 8
+      N: 1
+      K: 1
+      hard: true
+      note: "Three distinct route groups; uniform is nearly as bad as deterministic here."
+      banked:
+        - cell: "N=1 K=1, hard interception"
+          era: post-fix
+          ledger: experiments/zst_step0.md
+          items:
+            - label: "anchors (shortest / uniform / equilibrium)"
+              value: 0.333
+              quote: "shortest 1.000, uniform 0.818, equilibrium 0.333"
+    - od: "72-42"
+      label: "72-42 · gen15 zero-shot test OD (hard)"
+      k_extra: 8
+      N: 3
+      K: 1
+      note: "Held-out OD of the gen15 generalist; the one OD one seed missed."
+    - od: "103-27"
+      label: "103-27 · gen15 zero-shot test OD"
+      k_extra: 8
+      N: 3
+      K: 1
+    - od: "66-230"
+      label: "66-230 · gen15 zero-shot test OD"
+      k_extra: 8
+      N: 3
+      K: 1
+    - od: "219-19"
+      label: "219-19 · gen15 zero-shot test OD"
+      k_extra: 8
+      N: 3
+      K: 1
+    - od: "64-11"
+      label: "64-11 · gen15 zero-shot test OD"
+      k_extra: 8
+      N: 3
+      K: 1
+    - od: "189-11"
+      label: "189-11 · gen15 zero-shot test OD"
+      k_extra: 8
+      N: 3
+      K: 1
+  gdansk:
+    - od: "249-95"
+      label: "249-95 · gen16 zero-shot city OD"
+      k_extra: 8
+      N: 3
+      K: 1
+      note: "Gdansk was held out entirely in gen16; these six ODs are the zero-shot test set."
+    - od: "106-173"
+      label: "106-173 · gen16 zero-shot city OD"
+      k_extra: 8
+      N: 3
+      K: 1
+    - od: "351-210"
+      label: "351-210 · gen16 zero-shot city OD"
+      k_extra: 8
+      N: 3
+      K: 1
+    - od: "146-296"
+      label: "146-296 · gen16 zero-shot city OD"
+      k_extra: 8
+      N: 3
+      K: 1
+    - od: "275-72"
+      label: "275-72 · gen16 zero-shot city OD"
+      k_extra: 8
+      N: 3
+      K: 1
+    - od: "193-278"
+      label: "193-278 · gen16 zero-shot city OD (the 0.01-miss cell)"
+      k_extra: 8
+      N: 3
+      K: 1
+  east_london:
+    - od: "14-289"
+      label: "14-289 · gen16 training OD"
+      k_extra: 8
+      N: 3
+      K: 1
+    - od: "386-557"
+      label: "386-557 · gen16 training OD"
+      k_extra: 8
+      N: 3
+      K: 1
+    - od: "329-137"
+      label: "329-137 · gen16 training OD"
+      k_extra: 8
+      N: 3
+      K: 1
+    - od: "321-155"
+      label: "321-155 · gen16 training OD"
+      k_extra: 8
+      N: 3
+      K: 1
+  istanbul:
+    - od: "546-20"
+      label: "546-20 · gen16 training OD"
+      k_extra: 8
+      N: 3
+      K: 1
+    - od: "163-363"
+      label: "163-363 · gen16 training OD"
+      k_extra: 8
+      N: 3
+      K: 1
+    - od: "323-274"
+      label: "323-274 · gen16 training OD"
+      k_extra: 8
+      N: 3
+      K: 1
+    - od: "1207-757"
+      label: "1207-757 · gen16 training OD"
+      k_extra: 8
+      N: 3
+      K: 1
