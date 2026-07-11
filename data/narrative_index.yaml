@@ -1,0 +1,721 @@
+# The curated narrative index: one record per generation/arc, authored 2026-07-11 from
+# reading the ledgers (MISSION_CONTROL_BRIEF §3). RULES:
+#  - every string under `quote:` is VERBATIM from the file named in `ledger:` (modulo the
+#    ledgers' hard line-wrapping; the provenance test collapses whitespace before matching);
+#  - `label:` and `question:` are curated paraphrase and carry no numbers that are not in a quote;
+#  - era: campaign (congestion game) | pre-fix | post-fix (the 2026-07-09 node-ordering fix).
+# Chapters (the three pivots as dividers): campaign -> interdiction -> multiconvoy -> expansion.
+
+chapters:
+  - id: campaign
+    title: "The congestion campaign"
+    subtitle: "Acts I-III: the rigorous negative (Jun to 6 Jul 2026)"
+  - id: interdiction
+    title: "The interdiction redesign"
+    subtitle: "Act IV: the security game where adversarial RL provably works (6-7 Jul 2026)"
+  - id: multiconvoy
+    title: "The multi-convoy game"
+    subtitle: "Fleets, mission failure, and the audit that moved the headline (7-10 Jul 2026)"
+  - id: expansion
+    title: "The expansion programme"
+    subtitle: "Zero-shot transfer, the SBO stack, pattern-of-life dynamism (10-11 Jul 2026)"
+
+era_divider:
+  after: gen09
+  title: "The node-ordering fix (2026-07-09, SHA e9acb56)"
+  text: >-
+    An examiner-grade audit found a project-wide representation bug: every network ever
+    trained read a fixed permutation of the wrong nodes' embeddings. Everything before the
+    fix is the PRE-FIX era (internally valid comparisons, scrambled spatial semantics);
+    everything after is POST-FIX. The project never mixes the two in one visual, and
+    neither does this app.
+  source: sacred/experiments/gen10_postfix.md
+
+generations:
+
+  # ---------------------------------------------------------------- campaign
+
+  - id: origins
+    chapter: campaign
+    era: campaign
+    title: "OSM static baseline: the learnability wall"
+    dates: "2026-06-14 to 06-18"
+    status: DIVERGED_THEN_FLAT
+    question: >-
+      Can the original SACRED formulation (Kaliningrad OSM graph, 4 trucks, 150 packages,
+      co-evolving congestion adversary) learn end to end?
+    ledger: SACRED_PROGRESS.md
+    quotes:
+      - label: "First run diverged"
+        quote: "first 2000-ep run **diverged** (SAC temperature α 1→69, critic Q 7→601 - root cause: inverted alpha-loss sign, later fixed)"
+      - label: "Stable but flat after the fix"
+        quote: "two reward-variant runs were *stable but flat*: delivery rate pinned at **~0.91** across every variant; the critic's `Q_Spread` diagnostic **collapsed 5.3→0.46**; policy entropy never fell"
+    lesson: >-
+      Stable training and learnable problem are different properties. With demand everywhere,
+      per-step decisions are near-inconsequential and the adversary is toothless.
+    demo: text
+    tb_runs: ["sacred_atla_thesis_run_2000ep_sw50_b32_0614_170342", "protag_signal_rebalance_2000ep_sw50_b32_0617_135022", "protag_reward_shaping_2000ep_sw50_b32_0618_150523"]
+
+  - id: stage0
+    chapter: campaign
+    era: campaign
+    title: "Stage 0: single-truck next-hop route choice"
+    dates: "2026-06-27/28"
+    status: NEAR_WASH
+    question: >-
+      Can the SACRED stack learn a consequential adversarial policy at all, on the cleanest
+      possible signal (one truck, two-route corridor)?
+    ledger: SACRED_PROGRESS.md
+    quotes:
+      - label: "It learns, but"
+        quote: "it learns: `Q_Spread` 0.85→1.58, entropy 0.60→0.34 (commits), antagonist co-evolves (Q 22→62), 12/12 delivered: but **matches reactive greedy under attack** (final gap +24, ~1.6%) and never beats it"
+    lesson: >-
+      The first of three near-washes against reactive greedy; reactive baselines are strong
+      (Ritzinger et al. 2015).
+    demo: text
+    tb_runs: ["stage0_mature_1000ep_sw50_b32_0628_113727"]
+
+  - id: static3b
+    chapter: campaign
+    era: campaign
+    title: "Static-3b assignment probe and the retraction"
+    dates: "2026-06-28, retracted 06-29"
+    status: RETRACTED
+    question: >-
+      Does RL beat greedy insertion at multi-truck assignment, where greedy is provably
+      suboptimal?
+    ledger: SACRED_PROGRESS.md
+    quotes:
+      - label: "The retraction"
+        quote: "**RETRACTED on a windowed re-read**: mean `gap_atk` over all 20 eval points **+18** (a loss), reliable static loss ~+8%, and the metric itself was mis-specified"
+    lesson: >-
+      The project's most important methodological lesson: never headline a final/best point;
+      fix the decision metric in advance. The retraction seeded the ledger discipline every
+      later claim rests on.
+    demo: text
+
+  - id: gen01
+    chapter: campaign
+    era: campaign
+    title: "gen01: ERB bootstrapping pilot"
+    dates: "2026-06-28/29"
+    status: INCONCLUSIVE
+    question: >-
+      Does seeding the replay buffer with greedy demonstrations (Obj-3's ERB bootstrapping)
+      fix the static assignment gap and accelerate learning?
+    ledger: experiments/gen01_erb_ablation.md
+    quotes:
+      - label: "ERB did not move the gap"
+        quote: "`gap_noatk` stayed **~+50** (start +54)"
+      - label: "Late co-evolution instability"
+        quote: "`Q_Spread` 7.1→1.9, entropy 0.5→0.7, antagonist Q 19→56"
+    demo: chart
+    tb_runs: ["gen01_erb_ablation/assign_erb_seed0"]
+
+  - id: gen02
+    chapter: campaign
+    era: campaign
+    title: "gen02: dynamic (Poisson) assignment"
+    dates: "2026-06-29/30"
+    status: NEAR_WASH
+    question: >-
+      Does RL beat greedy insertion under attack in the dynamic regime, beyond seed luck?
+    ledger: experiments/gen02_dynassign.md
+    quotes:
+      - label: "Not significant"
+        quote: "**cross-seed mean gap_atk ≈ −106**, but **±~1000 std (SEM ±450) → NOT significant**"
+      - label: "Reliable static loss"
+        quote: "`gap_noatk` ≈ **+348 (~+6%)**, low-variance → RL **reliably loses statically**"
+    demo: chart
+    tb_runs: ["gen02_dynassign/dynassign_seed0", "gen02_dynassign/dynassign_seed1"]
+
+  - id: critique
+    chapter: campaign
+    era: campaign
+    title: "The critique and the reframe"
+    dates: "2026-07-01/02"
+    status: REFRAMED
+    question: >-
+      Fresh-eyes interrogation after three near-washes: was the evidence valid, and was
+      "beat greedy" ever the objective?
+    ledger: SACRED_PROGRESS.md
+    quotes:
+      - label: "A real bug found"
+        quote: "the hybrid rung had a **mechanical bug firing every episode**: cross-event double assignment stranded a truck orbiting a served node"
+      - label: "The missing control"
+        quote: "the thesis's own Obj-5 control: a *non-adversarially trained* SAC: had never been run"
+    lesson: >-
+      The headline became robustness from adversarial training (SACRED vs vanilla SAC under
+      held-out attacks); every subsequent experiment is pre-registered.
+    demo: text
+
+  - id: gen03
+    chapter: campaign
+    era: campaign
+    title: "gen03: the robustness pilot; the adversary cannot attack"
+    dates: "2026-07-02/03"
+    status: "NULL"
+    question: >-
+      Does ATLA co-evolution buy robustness to held-out attacks versus an identical
+      vanilla-SAC control?
+    ledger: experiments/gen03_robustness_dynassign.md
+    quotes:
+      - label: "Primary null, wrong sign"
+        quote: "`dD = D(vanilla, br_own) − D(sacred, br_own)`: pair0 **−291 ± 500**, pair1 **−255 ± 295** (95% CI, n=30 paired instances each)"
+      - label: "The diagnostic that matters"
+        quote: "The learned attackers are **weaker than random blocking** and **3–6× weaker than the scripted heuristic**"
+    lesson: >-
+      The binding constraint on the whole framework is adversary competence, not protagonist
+      learning.
+    demo: chart
+    tb_runs: ["gen03_robustness_dynassign/vanilla_seed0"]
+
+  - id: gen04
+    chapter: campaign
+    era: campaign
+    title: "gen04: can the adversary see now? Gate FAIL"
+    dates: "2026-07-04"
+    status: GATE_FAIL
+    question: >-
+      With full motion observability, does a retrained best-response attacker finally beat
+      random blocking?
+    ledger: experiments/gen04_antag_gate.md
+    quotes:
+      - label: "Still below random"
+        quote: "Ratios: br/random = **0.84** (PASS needed ≥ 1.25); br/targeted = 0.28 (STRONG needed ≥ 0.50)"
+      - label: "Entropy pinning diagnosed"
+        quote: "**α stayed pinned at 1.0 with policy entropy ~2.1**"
+    demo: chart
+    tb_runs: ["gen04_antag_gate/br_fixed_vanilla_s0_seed0"]
+
+  - id: gen05
+    chapter: campaign
+    era: campaign
+    title: "gen05: the hybrid matrix is competence-void"
+    dates: "2026-07-04"
+    status: NOT_MET
+    question: >-
+      Does adversarial training against the strong scripted attacker buy robustness to a
+      held-out attack on the decision-dense hybrid arena?
+    ledger: experiments/gen05_hybrid_matrix.md
+    quotes:
+      - label: "Sign reversed"
+        quote: "pooled `dD_gateway = −192 ± 181` (95% CI, n=72), pairings positive **0/3**"
+      - label: "Neither arm learned"
+        quote: "W(none) ≈ 4.6–4.8k vs greedy's 847 — ~5.6× worse"
+      - label: "The one nugget"
+        quote: "**Against GREEDY, the learned attackers finally work**: +1667"
+    lesson: >-
+      Weak policies fake robustness (ceiling compression); competence is a precondition for
+      the robustness question. The +1667 nugget seeds Act III: predictability is the
+      exploitable surface.
+    demo: chart
+    tb_runs: ["gen05_hybrid_matrix/hybrid_vanilla_seed0"]
+
+  - id: gen06
+    chapter: campaign
+    era: campaign
+    title: "gen06: the definitive negative"
+    dates: "2026-07-05"
+    status: REVERSED
+    question: >-
+      In the competence-gated arena, does adversarial training buy robustness to the fully
+      held-out targeted attack?
+    ledger: experiments/gen06_dynassign_matrix.md
+    quotes:
+      - label: "Competence gate passed"
+        quote: "**Competence gate: PASS, all six arms** — W(none) within **+5.5…+7.0%** of greedy (6538–6635 vs 6200)"
+      - label: "Primary significantly reversed"
+        quote: "pooled `dD_targeted = −881 ± 284` (95% CI, n=90), pairings positive **0/3** (−1379±519 / −785±510 / −479±400) → **NOT MET, significantly reversed**"
+      - label: "Worse even under its own attacker"
+        quote: "`dD_pathrand = −775 ± 244` (0/3) — the scripted arm is worse even under **its own training attacker**"
+      - label: "The robustness ranking"
+        quote: "greedy (4921) > vanilla (5196–5882) > adversarially-trained (6361–6575)"
+    lesson: >-
+      Adversarial co-training, as formulated for the stochastic-dynamic VRP, does not confer
+      robustness and measurably worsens it. The most robust policy measured is the reactive
+      classical dispatcher.
+    demo: chart
+    tb_runs: ["gen06_dynassign_matrix/vanilla_seed0", "gen06_dynassign_matrix/dynassign_scripted_seed0"]
+
+  - id: gen07
+    chapter: campaign
+    era: campaign
+    title: "gen07: the flat landscape, and the pivot"
+    dates: "2026-07-06"
+    status: CLOSED_PIVOT
+    question: >-
+      Can the exploitability reframe (worst case against a strategic attacker) be made to
+      work with the congestion adversary, given five learnability fixes?
+    ledger: experiments/gen07_contested_matrix.md
+    quotes:
+      - label: "The corrected gate fails robustly"
+        quote: "the CORRECTED BR gate (all five fixes applied, §B9.iv below) showed a best-response attacker plateaus at **0.35× random** with entropy pinned and near-zero Q-spread"
+      - label: "Why: every block is equally damaging"
+        quote: "br/random = **0.35** (WORSE than the unfixed hybrid gate's 0.84)"
+    lesson: >-
+      The attack landscape is flat where it is large and thin where it is differentiated: a
+      structural property of the congestion adversary (observable, reroutable, reversible),
+      not a fixable optimisation issue. The constructive move: change the adversary to
+      interdiction (hidden, irreversible, pre-committed), a Stackelberg security game.
+    demo: text
+
+  # ---------------------------------------------------------------- interdiction
+
+  - id: gen08
+    chapter: interdiction
+    era: pre-fix
+    title: "gen08: the security game works; B2-P3 banks the first PASS"
+    dates: "2026-07-06/07"
+    status: PASS
+    question: >-
+      Does a SAC dispatcher trained adversarially learn a mixed-strategy route policy less
+      exploitable than shortest-path AND than non-adversarial SAC, approaching the computable
+      minimax equilibrium?
+    ledger: experiments/gen08_interdiction.md
+    quotes:
+      - label: "The equilibrium proof (before any training)"
+        quote: "deterministic routing 100% intercepted → minimax mixed 17-33% on the real Kaliningrad graph"
+      - label: "The first positive result (I2 slice)"
+        quote: "**Adversarial training cut interception 100% -> 23%**, converging toward the computed equilibrium"
+      - label: "The banked B2-P3 ladder (TAP, pooled)"
+        quote: "shortest_path 1.000 > vanilla 0.477 > uniform 0.455 > **sacred 0.362** >> equilibrium 0.167"
+      - label: "Vanilla is worse than noise on shared edges"
+        quote: "on shared-edge instances, cost-driven mixing is WORSE than naive noise: predictability with extra steps"
+      - label: "Strong form honestly missed"
+        quote: "**STRONG form NOT met (reported plainly):** distance-to-equilibrium 0.163-0.239"
+    lesson: >-
+      Three fictitious-play disciplines were bracketed on the way: latest-pure-BR cycles,
+      all-history mixtures park, SMOOTH fictitious play converges. Instance structure decides
+      whether the control can imitate the equilibrium.
+    demo: chart
+    runs_dir: gen08_interdiction_I3
+    sha: "874d3f3"
+
+  # ---------------------------------------------------------------- multiconvoy
+
+  - id: gen09
+    chapter: multiconvoy
+    era: pre-fix
+    title: "gen09: the multi-convoy headline, locked at the best checkpoint"
+    dates: "2026-07-08/09"
+    status: LOCKED
+    question: >-
+      Does adversarially-trained randomised fleet routing beat a coordinating classical
+      metaheuristic (ALNS) and non-adversarial SAC under the loss-averse mission-failure
+      objective?
+    ledger: experiments/gen09_multiconvoy.md
+    quotes:
+      - label: "The locked headline"
+        quote: "**SACRED best-checkpoint TAP mean 0.283 +/- 0.021 (3 seeds).**"
+      - label: "The fairness row"
+        quote: "ALNS is FREE to stack but SPREADS by choice (spread 0.699 < forced-stack 0.912), so SACRED's advantage is the RANDOMISATION"
+      - label: "The transient finding (three failed holds)"
+        quote: "the adversarial mechanism reproducibly PRODUCES the equilibrium hedge (validated, tight across seeds)"
+      - label: "The structural screen"
+        quote: "DISJOINT route sets are ALWAYS near-uniform-leader (H/lnR >= 0.97) -> a flat fictitious-play landscape"
+      - label: "The honest caveat"
+        quote: "the fleet stacking is STRUCTURAL (followers copy the leader), the honest caveat carried from the start"
+    demo: chart
+    runs_dir: gen09_multiconvoy
+    sha: "ad70a9c"
+
+  - id: gen10
+    chapter: multiconvoy
+    era: post-fix
+    title: "gen10: the audit, the fix, and the re-runs"
+    dates: "2026-07-09"
+    status: SPLIT
+    question: >-
+      Do the two banked headlines survive, and by how much do they improve, when the policy
+      heads read the correct node embeddings?
+    ledger: experiments/gen10_postfix.md
+    quotes:
+      - label: "The bug"
+        quote: "every network ever trained in this project read a fixed permutation of the wrong nodes' embeddings (demonstrated: convoy at node 62 reads node 167's row)"
+      - label: "Single-convoy: markedly better"
+        quote: "pooled sacred TAP 0.276 vs the banked 0.362 (distance-to-equilibrium 0.109 vs 0.195, i.e. ~44% of the residual gap was the representation bug)"
+      - label: "Multi-convoy: regressed, reported as measured"
+        quote: "**Post-fix EXACT best-checkpoint TAP mean 0.447 +/- 0.029** vs the pre-fix exact comparator **0.295 +/- 0.024**"
+      - label: "MC2 attribution"
+        quote: "**gen10-MC2 EXACT best-checkpoint TAP mean 0.447 +/- 0.008**: numerically identical to gen10-MC's 0.447 +/- 0.029"
+      - label: "The fleet-cost column"
+        quote: "its premium is essentially THE EQUILIBRIUM'S OWN (123.1 vs 120.8): the randomised stack pays what optimal play pays"
+    lesson: >-
+      A bug can flatter learning: the pre-fix permutation was an accidental route-identity
+      hash. The single-convoy headline is superseded to 0.276; the multi-convoy plateau at
+      0.447 pointed at head discriminability, resolved by gen12/gen13's instance finding.
+    demo: chart
+    runs_dir: gen10_postfix
+    sha: "e9acb56"
+
+  - id: gen11
+    chapter: multiconvoy
+    era: post-fix
+    title: "gen11: the menu-head decomposition"
+    dates: "2026-07-10 (overnight)"
+    status: NO_PASS
+    question: >-
+      Can the post-fix multi-convoy leader reach the pre-fix headline on honest
+      representations, via head features or a leader-only push?
+    ledger: experiments/gen11_menuhead.md
+    quotes:
+      - label: "The plateau stands"
+        quote: "| B (cost+vuln features) | 0.410 / 0.441 / 0.479 | **0.443 +/- 0.028** | 0.708 | = plateau; `route_feat_w` ended at [0.001, 0.005]: NEVER TRAINED to relevance |"
+      - label: "Identity vs semantics (gen11b)"
+        quote: "| E' (identity, lr 3e-2) | **0.295 / 0.295** / 0.482 | 0.357 +/- 0.088 | bias spread [-1.38, 3.57], std 1.36 |"
+      - label: "Falsified spectacularly"
+        quote: "| C (leader-only push) | 0.980 / 0.980 / 0.980 | 0.980 +/- 0.000 | 0.980 | CATASTROPHIC: H_lead 0.00 from eval 1, alpha -> 295 |"
+    lesson: >-
+      Added head parameters need their own learning-rate scale or they are silent no-ops;
+      memorisable identity beats transferable semantics where the equilibrium is flat.
+    demo: chart
+    runs_dir: gen11_menuhead
+
+  - id: f3
+    chapter: multiconvoy
+    era: post-fix
+    title: "F3: the Obj-4 SBO demonstrator"
+    dates: "2026-07-10 (overnight)"
+    status: MET
+    question: >-
+      Can a neural metamodel approximate the interdiction-aware quality of a base/FOB
+      placement + fleet-size design well enough to select good designs without solving the
+      game?
+    ledger: experiments/f3_sbo_demonstrator.md
+    quotes:
+      - label: "Held-out surrogate quality"
+        quote: "**Held-out: RMSE 0.0222 (target range 0.099-0.332) | Spearman rho 0.894 (p = 7e-40) | argmin regret 0.0000**"
+      - label: "The space"
+        quote: "x fleet size N in {2,3,4} = **450 designs**"
+    demo: live
+    artefact: models/runs/sbo_placement_demo.json
+
+  - id: gen12
+    chapter: multiconvoy
+    era: post-fix
+    title: "gen12: the disruption sweep curves and the held-out OD"
+    dates: "2026-07-10 (overnight)"
+    status: CURVES_BANKED
+    question: >-
+      Does SACRED's best-checkpoint stay below ALNS across K and N on the headline OD and a
+      held-out OD screened before training?
+    ledger: experiments/gen12_sweeps.md
+    quotes:
+      - label: "The tier verdict"
+        quote: "SACRED < ALNS in ALL 10 CELLS; the held-out OD reaches near-equilibrium POST-FIX"
+      - label: "The held-out headline cell"
+        quote: "| N=3 K=1 | **0.261** | 0.699 | 0.206 | **1.27x** |"
+      - label: "The key finding"
+        quote: "the 0.447 plateau is INSTANCE-SPECIFIC to 62-97, not architectural"
+      - label: "The post-fix vanilla row"
+        quote: "**post-fix vanilla completed to 3 seeds** (TAP 0.859 / 0.852 / 0.855 = **0.855 +/- 0.003**"
+    demo: chart
+    runs_dir: gen12_sweeps
+
+  - id: zst0
+    chapter: multiconvoy
+    era: post-fix
+    title: "ZST step 0: the pre-registered scoping negative"
+    dates: "2026-07-10 (overnight)"
+    status: NO_TRANSFER
+    question: >-
+      Does the single-OD post-fix policy transfer zero-shot to a held-out OD's security game?
+    ledger: experiments/zst_step0.md
+    quotes:
+      - label: "Fails the random-init clause"
+        quote: "is WORSE than an untrained network (0.699 > 0.584): the training specialised the walk policy to the home OD's branch geometry"
+      - label: "The mechanism read"
+        quote: "with hard interception there is NO observable threat/geometry signal for the policy to condition on, so zero-shot generalisation had no mechanism to work through"
+    lesson: >-
+      ZST requires map-conditioned, multi-instance training. This measured boundary is what
+      gen15 then removed.
+    demo: chart
+    artefact: models/runs/zst_step0.json
+
+  - id: gen13
+    chapter: multiconvoy
+    era: post-fix
+    title: "gen13: the lock; the multi-convoy headline goes post-fix"
+    dates: "2026-07-10"
+    status: LOCK_PASSED
+    question: >-
+      Does the held-out-screened instance 35-159 hold near-equilibrium across seeds, making
+      the multi-convoy headline fully post-fix?
+    ledger: experiments/gen13_lock.md
+    quotes:
+      - label: "The lock"
+        quote: "**gen13-lock exact best-checkpoint TAP mean 0.274 +/- 0.025 (3 seeds).**"
+      - label: "What is established"
+        quote: "the adversarially-trained fleet's randomised stack is 2.55x less mission-exploitable than the certified deterministic optimum and lands at 1.33x the computable equilibrium"
+      - label: "The asymmetry retired"
+        quote: "BOTH headlines (single-convoy gen10-SC 0.276; multi-convoy gen13 0.274) now sit on corrected code"
+    demo: live
+    runs_dir: gen13_lock
+    instance: "35-159 k8 band(0.15,0.95) N=3 K=1"
+
+  - id: gen14
+    chapter: multiconvoy
+    era: post-fix
+    title: "gen14: n=10 confidence intervals for both headlines"
+    dates: "2026-07-10"
+    status: CLOSED
+    question: >-
+      Make both headlines n=10 with t-based 95% CIs and complete the 35-159 ladder natively.
+    ledger: experiments/gen14_evidence.md
+    quotes:
+      - label: "The citable multi-convoy CI"
+        quote: "**mean 0.256, sd 0.014, 95% t-CI [0.246, 0.266]** (all fresh at this SHA)"
+      - label: "The citable single-convoy CI"
+        quote: "**sacred mean 0.310, 95% t-CI [0.275, 0.345]; vanilla mean 0.485; sacred < vanilla on 10/10 seeds; paired dD (vanilla - sacred) mean 0.175, 95% CI [0.137, 0.213] EXCLUDING ZERO.**"
+      - label: "The native vanilla row (chapter-worthy ordering note)"
+        quote: "on 35-159 the non-adversarial vanilla (0.526 best-ckpt) sits BELOW ALNS (0.699) - the reverse of 62-97"
+      - label: "The native fairness row"
+        quote: "The forced-stack fairness row (0.841 >> ALNS spread 0.699) reproduces natively"
+    demo: live
+    runs_dir: gen14_evidence
+    instance: "35-159 k8 band(0.15,0.95) N=3 K=1"
+
+  # ---------------------------------------------------------------- expansion
+
+  - id: gen15
+    chapter: expansion
+    era: post-fix
+    title: "gen15: the first trained zero-shot transfer (held-out ODs)"
+    dates: "2026-07-10"
+    status: PASS
+    question: >-
+      Can ONE adversarially-trained policy, conditioned on the instance, learn mixed-strategy
+      fleet routing that transfers zero-shot to held-out OD pairs?
+    ledger: experiments/gen15_generalist.md
+    quotes:
+      - label: "The pass"
+        quote: "**Held-out (zero-shot) best-checkpoint mean ratio 1.592 +/- 0.096 (3 seeds).**"
+      - label: "Beats the deterministic optimum on unseen instances"
+        quote: "the policy beats loss_det (policy ratio < loss_det ratio) on **17/18 (OD, seed) cells**"
+      - label: "Small generalisation gap"
+        quote: "Held-out and TRAIN ratios track (1.42-1.71), i.e. small generalisation gap: the policy is conditioning on the instance, not memorising"
+    demo: live
+    runs_dir: gen15_generalist
+
+  - id: a2
+    chapter: expansion
+    era: post-fix
+    title: "A2: transfer across OD pairs, not across graphs"
+    dates: "2026-07-10"
+    status: NEGATIVE_FINDING
+    question: >-
+      Does the gen15 generalist transfer zero-shot to a structurally different graph?
+    ledger: experiments/a2_graph_transfer.md
+    quotes:
+      - label: "The tie"
+        quote: "**The generalist TIES a random-init network (2.40 vs 2.41) and beats no held-out OD.**"
+      - label: "The reading"
+        quote: "a generalist trained on ONE source graph transfers across OD PAIRS (A1: 1.59x, passing) but NOT across GRAPHS (this: ~random)"
+    lesson: >-
+      The GNN overfits to the one graph it ever saw; cross-city ZST needs multi-graph
+      training. This is the finding gen16 is built on.
+    demo: chart
+    artefact: models/runs/a2_graph_transfer_original.json
+
+  - id: a3
+    chapter: expansion
+    era: post-fix
+    title: "A3: the amortisation benchmark (honest)"
+    dates: "2026-07-10"
+    status: DONE
+    question: >-
+      Does wall-clock amortisation favour the trained policy over LP re-solving at K=1
+      instance sizes?
+    ledger: experiments/a3_amortisation.md
+    quotes:
+      - label: "The LP is faster and exact"
+        quote: "| oracle LP re-solve | 5.1 ms | 0.20 s | exact (ratio 1.00) |"
+      - label: "The policy"
+        quote: "| generalist forward pass | 3.4 ms | 0.13 s | ratio 1.90 +/- 0.34 |"
+    lesson: >-
+      Wall-clock never carries a claim. The ZST value is deployment structure, scale past the
+      enumeration wall, and the D3 policy-target capability.
+    demo: chart
+    artefact: models/runs/a3_amortisation.json
+
+  - id: a4
+    chapter: expansion
+    era: post-fix
+    title: "A4: the matrix-free greedy interdictor (past the oracle wall)"
+    dates: "2026-07-10"
+    status: CORE_DONE
+    question: >-
+      Establish and verify a matrix-free greedy K-edge best response for the regime where
+      exact enumeration is RAM-infeasible.
+    ledger: experiments/a4_greedy_br.md
+    quotes:
+      - label: "Exact where checkable"
+        quote: "**K=1: greedy == exact** best response to random defender supports (abs diff < 1e-9, 4 seeds)"
+      - label: "Past the wall"
+        quote: "| 5 | 0.981 | 8.2 s | 22,537,515 (RAM-infeasible for the exact matrix) |"
+    demo: chart
+
+  - id: b4
+    chapter: expansion
+    era: post-fix
+    title: "B4: correlated interception; independence is conservative"
+    dates: "2026-07-10"
+    status: DONE
+    question: >-
+      Is the headline's independence-of-interception assumption optimistic or conservative
+      for SACRED's randomised stack?
+    ledger: experiments/b4_correlated_interception.md
+    quotes:
+      - label: "The verdict"
+        quote: "**Therefore independence (rho=0) is the CONSERVATIVE assumption for the multi-convoy headline:**"
+      - label: "The gap holds under correlation"
+        quote: "the SACRED-over-ALNS gap HOLDS (62-97: 0.483 -> widens to 0.512 mid-range -> 0.414; 35-159: 0.493 -> 0.331, still large)"
+    demo: chart
+    artefact: models/runs/correlated_interception.json
+
+  - id: d1
+    chapter: expansion
+    era: post-fix
+    title: "D1: the SBO acquisition loop (Obj-4 proper)"
+    dates: "2026-07-10"
+    status: PASS_STRONG
+    question: >-
+      Does surrogate-guided acquisition find near-optimal interdiction-aware designs with
+      materially fewer exact evaluations than random search?
+    ledger: experiments/d1_sbo_loop.md
+    quotes:
+      - label: "The pass"
+        quote: "**Median evaluations to regret <= 0.01: SBO 32.5 vs random INF**"
+      - label: "Strong"
+        quote: "**Median final regret at budget 60: SBO 0.0000**"
+      - label: "The space"
+        quote: "Space: 900 designs (300 ODs x N in {2,3,4}); true optimum 0.099."
+    demo: live
+    artefact: models/runs/d1_sbo_loop.json
+
+  - id: d2
+    chapter: expansion
+    era: post-fix
+    title: "D2: defender-side hardening couples the tiers"
+    dates: "2026-07-10"
+    status: DONE
+    question: >-
+      Where should a pre-game hardening budget go, and does it change where operational
+      randomisation pays?
+    ledger: experiments/d2_hardening.md
+    quotes:
+      - label: "The buy"
+        quote: "**Unhardened equilibrium 0.206; greedy-hardened 0.169 (18% reduction) at budget 4;**"
+      - label: "The tier interaction"
+        quote: "hardening RELOCATES where randomisation pays** (equilibrium leader-route mass shift L1 = 0.29)"
+    demo: chart
+    artefact: models/runs/d2_hardening.json
+
+  - id: d3
+    chapter: expansion
+    era: post-fix
+    title: "D3: the composite; design against the deployed policy"
+    dates: "2026-07-10"
+    status: PASS
+    question: >-
+      Do ZST + SBO + the interdiction game compose: a surrogate over the TRAINED generalist's
+      operational exploitability, driving design selection no LP can enter?
+    ledger: experiments/d3_composite.md
+    quotes:
+      - label: "Surrogate over the trained policy"
+        quote: "**Surrogate over the TRAINED generalist's operational exploitability: held-out Spearman 0.959.**"
+      - label: "The genuine finding"
+        quote: "**policy-target vs oracle-target rank correlation across designs: 0.768** - designing against the DEPLOYED policy is strongly but NOT perfectly aligned with designing against the equilibrium abstraction"
+    demo: live
+    artefact: models/runs/d3_composite.json
+
+  - id: gen16
+    chapter: expansion
+    era: post-fix
+    title: "gen16: the first cross-CITY zero-shot transfer"
+    dates: "2026-07-10/11"
+    status: PASS
+    question: >-
+      Does ONE policy trained on three cities route fleets zero-shot in a fourth, held-out
+      city, scored against each OD's own oracle equilibrium?
+    ledger: experiments/gen16_multicity.md
+    quotes:
+      - label: "The pass"
+        quote: "**Held-out-CITY (Gdansk) best-checkpoint mean ratio 1.677 +/- 0.072 (3 seeds).**"
+      - label: "Beats the deterministic optimum"
+        quote: "**beats each OD's loss_det on 17/18 (OD, seed) cells**"
+      - label: "The A2-rescue row"
+        quote: "the multi-city actor scores **1.90 vs random 2.43** zero-shot, on a graph it never trained on either"
+      - label: "The transfer ladder"
+        quote: "same-graph held-out OD 1.59 (gen15) -> held-out CITY 1.68 (this) -> single-source cross-graph ~random (A2, the honest boundary multi-city training removes)"
+    demo: live
+    runs_dir: gen16_multicity
+
+  - id: gen17
+    chapter: expansion
+    era: post-fix
+    title: "gen17: the transient is inherent (gate closed)"
+    dates: "2026-07-10/11"
+    status: FAIL_CLOSES
+    question: >-
+      Can annealed FP-smoothing hold the last-iterate equilibrium tail instead of drifting?
+      One bounded attempt.
+    ledger: experiments/gen17_lastiterate.md
+    quotes:
+      - label: "The fail"
+        quote: "**FAIL:** no seed holds the tail (final-third means 0.42-0.59 vs the 0.27 bar; final TAPs 0.66-0.83)."
+      - label: "Headline unaffected"
+        quote: "Best-checkpoint values (0.264-0.300) sit in the gen14 band as pre-registered - the headline number is unaffected."
+    lesson: >-
+      Four failed hold-the-tail attempts across two instances and two eras make the
+      transient finding systematic; best-checkpoint discipline is final.
+    demo: chart
+    runs_dir: gen17_lastiterate
+
+  - id: gen18
+    chapter: expansion
+    era: post-fix
+    title: "gen18: the coordination boundary is real (gate closed)"
+    dates: "2026-07-10/11"
+    status: FAIL_CLOSES
+    question: >-
+      With all three original handicaps removed, can followers LEARN the stack rather than
+      copy structurally?
+    ledger: experiments/gen18_learnedfollower.md
+    quotes:
+      - label: "The lr fix worked, the followers still collapse"
+        quote: "`follow_w` trained hard (1.0 -> 2.93, vs the pre-fix plateau at 1.25 - the lr fix worked)"
+      - label: "The fail"
+        quote: "**FAIL on every clause** (PASS needed stack >= 0.8; PARTIAL needed stack materially above 0.18 - it is BELOW, at 0.08)."
+    lesson: >-
+      Structural stacking upgrades from caveat to measured boundary; future work is
+      exploration-side, not signal-side.
+    demo: chart
+    runs_dir: gen18_learnedfollower
+
+  - id: gen19
+    chapter: expansion
+    era: post-fix
+    title: "gen19: pattern-of-life dynamism, solved to the optimum"
+    dates: "2026-07-11"
+    status: PASS_STRONG
+    question: >-
+      Against a pattern-of-life interdictor that best-responds to the defender's realised
+      recent routes, can a history-aware policy beat the history-blind mixed strategy and
+      reach the computable dynamic optimum?
+    ledger: experiments/gen19_b1lite1.md
+    quotes:
+      - label: "The oracle ladder"
+        quote: "static_det 0.613 > iid_eq/no-window 0.148 > **SACRED 0.050** ~ history_opt 0.049"
+      - label: "The pass"
+        quote: "**SACRED reaches the dynamic optimum: 0.050 +/- 0.001 vs history_opt 0.049**, PRIMARY 3/3 (< iid_eq 0.147), STRONG 3/3"
+      - label: "The causal control"
+        quote: "the SAME policy with the window feature ZEROED (`--no-window`) lands at **0.148 = iid_eq exactly**"
+      - label: "The worst-case row"
+        quote: "its single-shot exploitability under a NON-ADAPTIVE oracle best-response is **0.219 ~ the single-shot equilibrium V_eq 0.206** (only +6%)"
+      - label: "The learned mechanism"
+        quote: "the policy learns to AVOID recently-frequent routes (anti-repeat), exactly the anticipatory dodging the oracle predicts"
+    demo: live
+    runs_dir: gen19_b1lite1
+    instance: "35-159 k8, w=3, tau=0.15"
