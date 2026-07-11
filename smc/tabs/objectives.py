@@ -351,7 +351,7 @@ class Obj3Exhibit(ExhibitBase):
         self.era_badge_host.addWidget(EraBadge(era))
         self._timer.stop()
         run_in_background(self._family_worker, family, glob,
-                          on_done=self._family_ready,
+                          on_done=lambda result, wanted=label: self._family_ready(result, wanted),
                           on_fail=lambda tb: None)
 
     @staticmethod
@@ -387,8 +387,10 @@ class Obj3Exhibit(ExhibitBase):
             refs["equilibrium"] = rf.data["loss_mixed"]
         return family, out, pol_hist, refs
 
-    def _family_ready(self, result) -> None:
+    def _family_ready(self, result, wanted: str = "") -> None:
         family, series, pol_hist, refs = result
+        if wanted and wanted != self.family_combo.currentText():
+            return  # the combo moved on; a pre-fix payload must not sit under a post-fix badge
         self._pol_hist = pol_hist
         self._anim_i = 0
         palette = theme.CATEGORICAL
@@ -486,7 +488,7 @@ class Obj4Exhibit(ExhibitBase):
         self.race_btn.setProperty("accent", True)
         self.race_btn.clicked.connect(self._run_race)
         rl.addWidget(self.race_btn)
-        self.race_label = QLabel("")
+        self.race_label = QLabel("Press “Run the loop live” to race the surrogate against random search.")
         rl.addWidget(self.race_label, 1)
         c2.layout_().addWidget(row)
         self.race_chart = ChartWidget(title="obj4-acquisition-race", height=3.0, width=7.2)
@@ -619,12 +621,13 @@ class Obj4Exhibit(ExhibitBase):
     def _race_done(self, result) -> None:
         sbo, rnd, opt = result
         self.race_btn.setEnabled(True)
-        self.race_label.setText("done")
+        self.race_label.setText("done (12 repeats, seeds 0-11)")
+        n0 = 8  # both methods start after the same 8 seed evaluations
         ax = self.race_chart.clear()
-        ax.plot(range(len(sbo)), sbo, color=theme.BLUE, linewidth=2.0,
+        ax.plot(range(n0, n0 + len(sbo)), sbo, color=theme.BLUE, linewidth=2.0,
                 label="surrogate-guided (live)")
-        ax.plot(range(len(rnd)), rnd, color=theme.STRATEGY_COLOURS["uniform"], linewidth=2.0,
-                label="random search (live)")
+        ax.plot(range(n0, n0 + len(rnd)), rnd, color=theme.STRATEGY_COLOURS["uniform"],
+                linewidth=2.0, label="random search (live)")
         ax.axhline(opt, color=theme.STRATEGY_COLOURS["equilibrium"], linestyle=":", linewidth=1.0)
         ax.annotate(f"table optimum {opt:.3f}", xy=(0.02, opt),
                     xycoords=("axes fraction", "data"), fontsize=8, va="bottom",
@@ -744,21 +747,28 @@ class Obj5Exhibit(ExhibitBase):
             ax.annotate(f"{key} {exact:.3f}", xy=(1.0, exact),
                         xycoords=("axes fraction", "data"), fontsize=8, ha="right",
                         va="bottom", color=colour)
-        # ledger row that cannot be re-flown live (no vanilla checkpoint exists)
-        van = next((r for r in _exhibit_data()["headline_ladders"]["multiconvoy"]["rows"]
-                    if r["arm"] == "vanilla"), None)
+        # ledger rows that cannot be re-flown live
+        rows = _exhibit_data()["headline_ladders"]["multiconvoy"]["rows"]
+        van = next((r for r in rows if r["arm"] == "vanilla"), None)
         if van:
             ax.axhline(van["value"], color=theme.STRATEGY_COLOURS["vanilla"], linestyle="--",
                        linewidth=1.2, alpha=0.9)
             ax.annotate(f"vanilla {van['value']} (ledger row, gen14: no checkpoint on disk)",
                         xy=(0.0, van["value"]), xycoords=("axes fraction", "data"), fontsize=8,
                         va="bottom", color=theme.STRATEGY_COLOURS["vanilla"])
+        banked = next((r for r in rows if r["arm"] == "sacred"), None)
+        if banked:
+            ax.annotate(
+                f"banked SACRED best-ckpt TAP {banked['value']} [0.246, 0.266] (gen14_evidence.md)",
+                xy=(0.0, banked["value"]), xycoords=("axes fraction", "data"), fontsize=8,
+                va="top", color=theme.STRATEGY_COLOURS["sacred"])
         ax.set_xlabel("sortie")
         ax.set_ylabel("running mission-failure rate")
         ax.set_ylim(-0.03, 1.03)
+        seeds = ", ".join(f"{k} seed {self._per_engine[k].seed}" for k, _ in self._contenders)
         self.race_chart.set_caption(
-            "solid = live running estimates (seeded); dotted = exact values computed live; "
-            "dashed = the ledger's vanilla row (gen14_evidence.md)", "live")
+            "solid = live running estimates; dotted = exact values computed live; dashed = "
+            f"the ledger's vanilla row (gen14_evidence.md) · seeds: {seeds}", "live")
         self.race_chart.redraw()
 
     def _draw_sweeps(self) -> None:
@@ -839,7 +849,9 @@ class ZstExhibit(ExhibitBase):
         rr.addWidget(self.map_rnd)
         maps_row.addWidget(right_box)
         c.layout_().addWidget(maps_row)
-        self.result_label = QLabel("")
+        self.result_label = QLabel(
+            "Press “Evaluate zero-shot”: both networks route the chosen Gdansk instance; "
+            "the maps and ratios appear here.")
         self.result_label.setWordWrap(True)
         c.layout_().addWidget(self.result_label)
 
@@ -871,10 +883,12 @@ class ZstExhibit(ExhibitBase):
     def _evaluate(self) -> None:
         city, od = self.od_combo.currentData()
         self.eval_btn.setEnabled(False)
+        self.od_combo.setEnabled(False)
         self.zst_label.setText("loading the frozen generalist…")
         run_in_background(self._eval_worker, city, od,
                           on_done=self._eval_done,
                           on_fail=lambda tb: (self.eval_btn.setEnabled(True),
+                                              self.od_combo.setEnabled(True),
                                               self.zst_label.setText(
                                                   "failed: " + tb.strip().splitlines()[-1])))
 
@@ -897,6 +911,7 @@ class ZstExhibit(ExhibitBase):
     def _eval_done(self, result) -> None:
         inst, d_gen, d_rnd, e_gen, e_rnd, ref = result
         self.eval_btn.setEnabled(True)
+        self.od_combo.setEnabled(True)
         self.zst_label.setText("")
         for mv, dist in ((self.map_gen, d_gen), (self.map_rnd, d_rnd)):
             mv.set_city(inst.city_map)
@@ -904,11 +919,12 @@ class ZstExhibit(ExhibitBase):
             mv.set_route_mixture(list(dist),
                                  theme.BLUE if mv is self.map_gen else theme.INK_MUTED)
         self.result_label.setText(
-            f"<b>Generalist: {e_gen:.3f} = {e_gen / inst.mc_value:.2f}x equilibrium</b> vs "
-            f"random-init {e_rnd:.3f} = {e_rnd / inst.mc_value:.2f}x · this instance's "
-            f"equilibrium {inst.mc_value:.3f}, deterministic optimum {inst.mc_loss_det:.3f} "
-            f"(all computed live; policy = {ref.provenance}). The generalist was trained on "
-            f"Kaliningrad, East London and Istanbul; it has never seen this graph.")
+            f"<b>Gdansk {inst.s}-{inst.t} · Generalist: {e_gen:.3f} = "
+            f"{e_gen / inst.mc_value:.2f}x equilibrium</b> vs random-init {e_rnd:.3f} = "
+            f"{e_rnd / inst.mc_value:.2f}x · this instance's equilibrium {inst.mc_value:.3f}, "
+            f"deterministic optimum {inst.mc_loss_det:.3f} (all computed live; policy = "
+            f"{ref.provenance}). The generalist was trained on Kaliningrad, East London and "
+            f"Istanbul; it has never seen this graph.")
 
 
 # ===================================================================== tab

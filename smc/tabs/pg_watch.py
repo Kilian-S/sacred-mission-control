@@ -252,7 +252,7 @@ class WatchPanel(QWidget, Exportable):
         inst = self._inst
         run_in_background(
             self._load_policy_worker, ref, inst,
-            on_done=self._policy_loaded,
+            on_done=lambda result, started_on=inst: self._policy_loaded(result, started_on),
             on_fail=self._policy_failed,
         )
 
@@ -263,12 +263,14 @@ class WatchPanel(QWidget, Exportable):
         occ = inst.route_dist_to_stacked_occ_dist(d)
         return ref.key, occ, ref.provenance
 
-    def _policy_loaded(self, result) -> None:
+    def _policy_loaded(self, result, started_on=None) -> None:
         key, occ, provenance = result
         self.load_btn.setEnabled(True)
         self.load_btn.setText("Load trained SACRED…")
         if self._inst is None or self._engine is None:
             return
+        if started_on is not None and started_on is not self._inst:
+            return  # the instance changed while the policy was loading; discard
         self._loaded_policies[key] = occ
         _, e = self._inst.exploitability_occ(occ)
         self.policy_card.show()
@@ -293,17 +295,21 @@ class WatchPanel(QWidget, Exportable):
             return
         self.alns_btn.setEnabled(False)
         self.alns_btn.setText("ALNS running…")
+        inst = self._inst
         run_in_background(
-            oracle_bridge.alns_plan, self._inst,
-            on_done=self._alns_done,
+            oracle_bridge.alns_plan, inst,
+            on_done=lambda result, started_on=inst: self._alns_done(result, started_on),
             on_fail=lambda tb: (self.alns_btn.setEnabled(True),
                                 self.alns_btn.setText("Compute ALNS")),
         )
 
-    def _alns_done(self, result) -> None:
+    def _alns_done(self, result, started_on=None) -> None:
         assignment, expl = result
-        self._alns_assignment = assignment
         self.alns_btn.setEnabled(True)
+        if started_on is not None and started_on is not self._inst:
+            self.alns_btn.setText("Compute ALNS")
+            return  # the instance changed while ALNS ran; discard
+        self._alns_assignment = assignment
         self.alns_btn.setText(f"ALNS ready ({expl:.3f})")
         self._refresh_defenders()
         idx = next((i for i, d in enumerate(self._defenders) if d.key == "alns"), None)

@@ -31,6 +31,48 @@ the brief (findings appended when received). Status: fixed items marked [FIXED].
     318 MB after load (brief: under ~1 GB); torch only imported on first roster load;
     no UI-thread stalls observed in the smoke (all solves/loads in QThreadPool workers).
 
-## Round 2 findings (independent reviewer)
+## Round 2 findings (independent fresh-eyes reviewer, run against the brief)
 
-See the appended list below; each item marked with its resolution.
+16 findings, three demo-breaking. Resolutions:
+
+1. [FIXED] Home forced horizontal scrolling (long entry-button text set a ~1600 px minimum
+   width, clipping the tagline, ladder values and the Documents button). Subtitles shortened,
+   columns stretch-shared.
+   0. [FIXED, pre-round] Home's hero caption said "35-159" while showing 33-71's numbers
+   (caught by the reviewer's first pass before it was interrupted).
+2. [FIXED] Stale worker results could be applied after an instance rebuild in three places
+   (watch policy load, watch ALNS, duel policy load): each callback now carries the instance
+   it started on and discards mismatches (the pattern history/obj2 already used).
+3. [FIXED] Duel controls were silently dead while the gen19 policy loaded (the smoke even
+   captured byte-identical before/after shots). Play/batch/combo now disable during the load
+   with an explicit "still loading" message, and re-enable on arrival.
+4. [FIXED] The duel's "Best fixed route" played argmin over the worst case (0.617) rather
+   than the static_det anchor's definition (0.613, min stationary loss vs its own softmax BR);
+   the running mean would have converged visibly above its own anchor line, breaching §4.2.
+   Now computes the anchor's own argmin.
+5. [FIXED] The banked gen19 card showed at any N/K on 35-159; now gated on N=3 K=1 as banked.
+6. [FIXED] Obj-3 era badge could mislabel a late-arriving family payload (pre-fix curves
+   under a POST-FIX badge); callbacks now verify the combo has not moved.
+7. [FIXED] Interdiction charts drew a hardcoded shortest_path=1.0 reference; now read the
+   arm's own expl_tap from the run JSON.
+8. [FIXED] Obj-5 race: seeds now printed in the caption (§4.6) and the banked gen14 CI
+   annotated beside the live SACRED line (§4.2).
+9. [FIXED] K=3 with N>=4 would materialise a multi-GB objective matrix; the picker now
+   refuses that region with an explanation (and the K warning says so).
+10. [FIXED] Ambush score card claimed "best possible single ambush" while K!=1; now clears
+    and asks for K=1.
+11. [FIXED] Blank panes before first interaction (ZST maps, Obj-4 race) now carry
+    instructions.
+12. [FIXED] Duel card headers wrap (the banked header lost its closing bracket at 330 px).
+13. [FIXED] ZST result names the OD it scored and the picker is disabled during the eval.
+14. [FIXED] Obj-4 race x-axis now starts at the shared 8-evaluation seed budget.
+15. [FIXED] Home's single-convoy ladder caption now cites gen14's n=10 CI (0.310
+    [0.275, 0.345]) beside the pooled gen10-SC ladder so the two ledger-true numbers cannot
+    read as a discrepancy.
+16. [FIXED] Cosmetics: "(hard)" preset label renamed (collided with the hard-interception
+    toggle); map panes no longer show scrollbars; the duel batch runs in a worker (no ~1-2 s
+    UI freeze); History's "Open ledger" now scrolls to the first quoted line.
+
+Reviewer's "convincingly right" list (provenance discipline enforced by tests; live maths
+matches the banked record exactly; era hygiene structural; honest degradation throughout)
+retained unchanged; none of the fixes touched those paths' behaviour.

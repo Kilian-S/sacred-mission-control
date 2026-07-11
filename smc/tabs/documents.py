@@ -122,10 +122,11 @@ class DocumentsTab(QWidget, Exportable):
         split.addWidget(right)
         split.setSizes([320, 900])
 
-        QShortcut(QKeySequence.Find, self, activated=self._focus_search)
-        QShortcut(QKeySequence("Meta+["), self, activated=self.go_back)
-        QShortcut(QKeySequence("Meta+]"), self, activated=self.go_forward)
-        QShortcut(QKeySequence.Back, self, activated=self.go_back)
+        for keys, fn in ((QKeySequence.Find, self._focus_search),
+                         (QKeySequence("Meta+["), self.go_back),
+                         (QKeySequence("Meta+]"), self.go_forward),
+                         (QKeySequence.Back, self.go_back)):
+            QShortcut(keys, self, activated=fn, context=Qt.WidgetWithChildrenShortcut)
 
         self._populate_tree()
         self._nav_buttons()

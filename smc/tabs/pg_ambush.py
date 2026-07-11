@@ -185,6 +185,12 @@ class AmbushPanel(QWidget, Exportable):
         if d is None:
             return
         inst = self._inst
+        if inst.K != 1:
+            self.score_chart.clear()
+            self.score_chart.redraw()
+            self.score_label.setText(
+                "This exercise places a single asset; set Assets K to 1 in the sidebar.")
+            return
         br_j, br_val = inst.exploitability_occ(d.occ_dist)
         ax = self.score_chart.clear()
         bars = [("best possible ambush", br_val, theme.STRATEGY_COLOURS["attacker"]),

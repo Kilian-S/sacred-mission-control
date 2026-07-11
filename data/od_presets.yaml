@@ -85,7 +85,7 @@ presets:
               value: 0.333
               quote: "shortest 1.000, uniform 0.818, equilibrium 0.333"
     - od: "72-42"
-      label: "72-42 · gen15 zero-shot test OD (hard)"
+      label: "72-42 · gen15 zero-shot test OD (the difficult one)"
       k_extra: 8
       N: 3
       K: 1

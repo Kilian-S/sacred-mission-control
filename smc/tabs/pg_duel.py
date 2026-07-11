@@ -48,6 +48,7 @@ class DuelPanel(QWidget, Exportable):
         self._playing = False
         self._pending_route: int | None = None
         self._anim = None
+        self._loading = False
         self.seed = 0
 
         lay = QVBoxLayout(self)
@@ -128,8 +129,9 @@ class DuelPanel(QWidget, Exportable):
         lay.addWidget(self.anchor_card)
 
         self.banked_card = Card()
-        bh = QLabel("The banked gen19 record (35-159, w=3, tau=0.15)")
+        bh = QLabel("The banked gen19 record (35-159, N=3, K=1, w=3, tau=0.15)")
         bh.setProperty("h3", True)
+        bh.setWordWrap(True)
         self.banked_card.layout_().addWidget(bh)
         bq = QLabel("static_det 0.613 > iid_eq/no-window 0.148 > **SACRED 0.050** ~ history_opt 0.049")
         bq.setTextFormat(Qt.MarkdownText)
@@ -184,8 +186,8 @@ class DuelPanel(QWidget, Exportable):
         self.map.set_city(inst.city_map)
         self.map.show_instance(inst.routes, inst.edge_vuln, inst.s, inst.t)
         self.map.set_route_click_mode(True)
-        is_gen19_cell = (inst.city, inst.s, inst.t) == ("kaliningrad", "35", "159") \
-            and inst.band == (0.15, 0.95)
+        is_gen19_cell = (inst.city, inst.s, inst.t, inst.N, inst.K) \
+            == ("kaliningrad", "35", "159", 3, 1) and inst.band == (0.15, 0.95)
         self.banked_card.setVisible(is_gen19_cell and self.w_spin.value() == 3
                                     and self.tau_combo.currentText() == "0.15")
         self._populate_defenders()
@@ -227,7 +229,8 @@ class DuelPanel(QWidget, Exportable):
             f"against this bounded adversary; single-shot minimax V_eq = {r['v_eq']:.3f})<br>"
             f"<b>history_opt = {r['history_opt']:.3f}</b> · the exact dynamic optimum "
             f"(anticipate the anticipator)")
-        is_gen19_cell = (self._inst.city, self._inst.s, self._inst.t) == ("kaliningrad", "35", "159") \
+        is_gen19_cell = (self._inst.city, self._inst.s, self._inst.t, self._inst.N,
+                         self._inst.K) == ("kaliningrad", "35", "159", 3, 1) \
             and self._inst.band == (0.15, 0.95)
         self.banked_card.setVisible(is_gen19_cell and game.w == 3 and abs(game.tau - 0.15) < 1e-9)
         self._reset_duel()
@@ -240,17 +243,36 @@ class DuelPanel(QWidget, Exportable):
         if key and key.startswith("policy:") and key.split(":", 1)[1] != self._policy_key:
             ref = next((r for r in self._actor_refs if r.key == key.split(":", 1)[1]), None)
             if ref is not None:
-                self.run_label.setText(f"Loading {ref.key}…")
+                self._policy = None
+                self._policy_key = ""
+                self._set_loading(True, ref.key)
                 inst = self._inst
                 run_in_background(
                     policies.load_policy, ref, inst,
-                    on_done=self._policy_ready,
-                    on_fail=lambda tb: self.run_label.setText(
-                        "Policy load failed: " + tb.strip().splitlines()[-1]),
+                    on_done=lambda pol, started_on=inst: self._policy_ready(pol, started_on),
+                    on_fail=lambda tb: (self._set_loading(False),
+                                        self.run_label.setText(
+                                            "Policy load failed: "
+                                            + tb.strip().splitlines()[-1])),
                 )
         self._reset_duel()
 
-    def _policy_ready(self, pol: policies.LoadedPolicy) -> None:
+    def _set_loading(self, on: bool, key: str = "") -> None:
+        """While a policy loads, the play controls are disabled, not silently dead."""
+        self._loading = on
+        for btn in (self.play_btn, self.batch_btn):
+            btn.setEnabled(not on)
+        self.def_combo.setEnabled(not on)
+        if on:
+            self.run_label.setText(f"Loading {key} (torch, a few seconds)…")
+
+    def _policy_ready(self, pol: policies.LoadedPolicy, started_on=None) -> None:
+        self._set_loading(False)
+        if started_on is not None and started_on is not self._inst:
+            return  # instance changed while loading; the combo will reload on demand
+        want = str(self.def_combo.currentData() or "")
+        if want != f"policy:{pol.ref.key}":
+            return  # the user picked a different defender meanwhile
         self._policy = pol
         self._policy_key = pol.ref.key
         self.run_label.setText(f"{pol.ref.key} loaded ({pol.ref.provenance}).")
@@ -278,7 +300,7 @@ class DuelPanel(QWidget, Exportable):
             self.map.set_route_mixture(list(self._game.eq_mixture()))
         elif key == "static_det":
             d = np.zeros(self._game.R)
-            d[int(np.argmin(np.max(self._game.L, axis=1)))] = 1.0
+            d[self._static_det_route()] = 1.0
             self.map.set_route_mixture(list(d), theme.STRATEGY_COLOURS["static_det"])
         elif key and key.startswith("policy:") and self._policy is not None:
             d = self._policy.route_distribution(self._duel.window_freq())
@@ -287,6 +309,21 @@ class DuelPanel(QWidget, Exportable):
             self.map.set_route_mixture([0.0] * self._game.R, theme.STRATEGY_COLOURS["human"])
 
     # ------------------------------------------------------------- play
+
+    def _static_det_route(self) -> int:
+        """The best FIXED route against this adversary: playing r forever fills
+        the window with r, so the stationary loss is L[r] @ softmax_br(w*e_r).
+        This matches sacred's static_det anchor exactly."""
+        g = self._game
+        best_r, best_v = 0, float("inf")
+        for r in range(g.R):
+            counts = np.zeros(g.R)
+            counts[r] = g.w
+            a = duel_mod.softmax_br_dist(g, counts)
+            v = float(g.L[r] @ a)
+            if v < best_v:
+                best_r, best_v = r, v
+        return best_r
 
     def _choose_route(self) -> int | None:
         """The automatic defender's route for the next sortie."""
@@ -298,7 +335,7 @@ class DuelPanel(QWidget, Exportable):
             eq = self._game.eq_mixture()
             return int(rng.choice(len(eq), p=eq / eq.sum()))
         if key == "static_det":
-            return int(np.argmin(np.max(self._game.L, axis=1)))
+            return self._static_det_route()
         if key and key.startswith("policy:"):
             if self._policy is None:
                 return None
@@ -310,8 +347,15 @@ class DuelPanel(QWidget, Exportable):
         if self._playing:
             self.stop_play()
             return
-        if self.def_combo.currentData() == "human":
+        if self._loading:
+            self.run_label.setText("The policy is still loading; one moment.")
+            return
+        key = self.def_combo.currentData()
+        if key == "human":
             self.run_label.setText("You are the defender: click a route on the map to fly it.")
+            return
+        if key and str(key).startswith("policy:") and self._policy is None:
+            self.run_label.setText("The policy is still loading; one moment.")
             return
         if self._game is None:
             return
@@ -372,18 +416,39 @@ class DuelPanel(QWidget, Exportable):
                 QTimer.singleShot(260, self._next_sortie)
 
     def _run_batch(self) -> None:
-        if self._game is None or self._duel is None:
+        if self._game is None or self._duel is None or self._loading:
             return
         self.stop_play()
         key = self.def_combo.currentData()
         if key == "human":
             self.run_label.setText("Batch mode needs an automatic defender.")
             return
-        for _ in range(300):
-            r = self._choose_route()
-            if r is None:
-                break
-            self._duel.step(r, self.att_combo.currentData())
+        if key and key.startswith("policy:") and self._policy is None:
+            self.run_label.setText("The policy is still loading; one moment.")
+            return
+        self.batch_btn.setEnabled(False)
+        self.play_btn.setEnabled(False)
+        duel, attacker = self._duel, self.att_combo.currentData()
+
+        def batch():
+            for _ in range(300):
+                r = self._choose_route()
+                if r is None:
+                    break
+                duel.step(r, attacker)
+            return duel
+
+        run_in_background(
+            batch,
+            on_done=lambda d: self._batch_done(d),
+            on_fail=lambda tb: self._batch_done(None),
+        )
+
+    def _batch_done(self, duel) -> None:
+        self.batch_btn.setEnabled(True)
+        self.play_btn.setEnabled(True)
+        if duel is not self._duel:
+            return  # reset happened mid-batch; discard
         self.map.clear_convoys()
         self.map.clear_ambush()
         self._update_running()

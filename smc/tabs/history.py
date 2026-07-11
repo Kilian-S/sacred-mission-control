@@ -173,7 +173,7 @@ class HistoryTab(QWidget, Exportable):
         btn = QPushButton(f"Open ledger: {Path(g.ledger).name}")
         btn.setToolTip(str(SACRED_ROOT / g.ledger))
         first_quote = g.quotes[0].quote if g.quotes else ""
-        btn.clicked.connect(lambda _=False, lg=g.ledger, fq="": self.open_ledger.emit(lg, fq))
+        btn.clicked.connect(lambda _=False, lg=g.ledger, fq=first_quote: self.open_ledger.emit(lg, fq))
         row_w = QWidget()
         rl = QHBoxLayout(row_w)
         rl.setContentsMargins(0, 0, 0, 0)

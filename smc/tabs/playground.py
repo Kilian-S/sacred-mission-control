@@ -130,7 +130,8 @@ class PlaygroundTab(QWidget, Exportable):
         g.addWidget(self.k_spin)
         lay.addWidget(grid)
 
-        self.k_warning = QLabel("K=3 enumerates ~80k interdiction sets; expect a ~20-30 s solve.")
+        self.k_warning = QLabel("K=3 enumerates ~80k interdiction sets; expect a ~20-30 s solve. "
+                                "K=3 with N of 4 or more would need gigabytes and is refused.")
         self.k_warning.setWordWrap(True)
         self.k_warning.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 10px;")
         self.k_warning.hide()
@@ -276,6 +277,13 @@ class PlaygroundTab(QWidget, Exportable):
             panel.stop_play()
         s, t = p["od"].split("-")
         K, N = self.k_spin.value(), self.n_spin.value()
+        if K >= 3 and N >= 4:
+            self._building = False
+            self.status.setText(
+                "K=3 with N>=4 would materialise a multi-gigabyte objective matrix "
+                "(the measured oracle wall); lower K or N. The regime beyond the wall "
+                "is the A4 greedy-BR story, told in History.")
+            return
         band = None if self.hard_check.isChecked() else (
             self.band_lo.value() / 100, self.band_hi.value() / 100)
         self.status.setText(f"Solving {city} {s}-{t}  K={K} N={N} …")

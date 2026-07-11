@@ -109,29 +109,35 @@ class HomeTab(QWidget, Exportable):
                         color=theme.INK_SECONDARY)
             ax.set_xlim(0, max(vals) * 1.2)
             ax.set_xlabel(ladder["unit"], fontsize=8)
-            chart.set_caption(f"ledger: {ladder['ledger']}", "ledger")
+            caption = f"ledger: {ladder['ledger']}"
+            if key == "singleconvoy":
+                caption += ("  ·  gen14's n=10 CI for the same cell: sacred 0.310 "
+                            "[0.275, 0.345] (gen14_evidence.md)")
+            chart.set_caption(caption, "ledger")
             card.layout_().addWidget(chart)
             ll.addWidget(card)
         hl.addWidget(ladders, 4)
         lay.addWidget(hero_row)
 
-        # entry buttons
+        # entry buttons (short subtitles so Home never forces horizontal scroll)
         grid = QGridLayout()
         grid.setSpacing(10)
         entries = [
-            ("Playground", "Fly sorties, duel the adaptive interdictor, place your own ambush", 1),
-            ("Objectives", "Six exhibits: each promise of the thesis, demonstrated live", 2),
-            ("History", "Nineteen generations, three pivots, every number traceable", 3),
-            ("Documents", "The ledgers and strategy documents themselves, searchable", 4),
+            ("Playground", "Fly sorties, duel, ambush", 1),
+            ("Objectives", "Six exhibits, live", 2),
+            ("History", "19 generations, 3 pivots", 3),
+            ("Documents", "Ledgers, searchable", 4),
         ]
         for col, (name, desc, idx) in enumerate(entries):
             btn = QPushButton(f"{name}\n{desc}")
             btn.setMinimumHeight(66)
+            btn.setMinimumWidth(0)
             btn.setStyleSheet(
                 f"QPushButton {{ text-align: left; padding: 10px 14px; font-size: 14px;"
                 f"font-weight: 600; background: {theme.SURFACE}; }}")
             btn.clicked.connect(lambda _=False, i=idx: self.go_to.emit(i))
             grid.addWidget(btn, 0, col)
+            grid.setColumnStretch(col, 1)
         lay.addLayout(grid)
         lay.addStretch(1)
 
@@ -167,10 +173,11 @@ class HomeTab(QWidget, Exportable):
         self._iset_red = inst.interdiction_sets[j_red]
         self._iset_blue = inst.interdiction_sets[j_blue]
         self.hero_caption.setText(
-            f"Kaliningrad 35-159, computed live: the committed interdictor intercepts the "
-            f"deterministic convoy with probability {self._red_loss:.2f} and the calibrated "
-            f"mixture with {self._blue_loss:.2f} (equilibrium {inst.sc_value:.3f}). "
-            f"Red flies the same route every sortie; blue samples from the equilibrium mixture.")
+            f"Kaliningrad {inst.s}-{inst.t} (hard interception), computed live: the committed "
+            f"interdictor intercepts the deterministic convoy with probability "
+            f"{self._red_loss:.2f} and the calibrated mixture with {self._blue_loss:.2f} "
+            f"(equilibrium {inst.sc_value:.3f}). Red flies the same route every sortie; "
+            f"blue samples from the equilibrium mixture.")
         self._begin_cycle()
         self._timer.start()
 

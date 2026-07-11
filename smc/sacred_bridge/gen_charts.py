@@ -108,7 +108,8 @@ def load_gen_chart(gen_id: str) -> dict[str, Any]:
                     "arm": arm_name,
                 })
             refs.setdefault("equilibrium", data.get("loss_mixed"))
-            refs.setdefault("shortest_path", 1.0 if data.get("loss_det") else None)
+            if isinstance(arms.get("shortest_path"), dict):
+                refs.setdefault("shortest_path", arms["shortest_path"].get("expl_tap"))
             if isinstance(arms.get("uniform"), dict):
                 refs.setdefault("uniform", arms["uniform"].get("expl_tap"))
 

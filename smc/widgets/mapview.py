@@ -74,6 +74,8 @@ class MapView(QGraphicsView):
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         self.setBackgroundBrush(QBrush(QColor(theme.SURFACE)))
         self.setFrameShape(QGraphicsView.NoFrame)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self._scene = QGraphicsScene(self)
         self.setScene(self._scene)
         self.setMouseTracking(True)
