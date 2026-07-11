@@ -28,9 +28,15 @@ class Worker(QRunnable):
         try:
             result = self.fn(*self.args, **self.kwargs)
         except Exception:
-            self.signals.failed.emit(traceback.format_exc())
+            try:
+                self.signals.failed.emit(traceback.format_exc())
+            except RuntimeError:
+                pass  # app shutting down
         else:
-            self.signals.finished.emit(result)
+            try:
+                self.signals.finished.emit(result)
+            except RuntimeError:
+                pass
 
 
 def run_in_background(

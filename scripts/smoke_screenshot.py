@@ -96,6 +96,38 @@ def main() -> int:
             pg.watch._run_batch()
     shots.append(("watch-batch", watch_batch))
 
+    # M4: every objectives exhibit
+    obj = win.objectives_tab
+    for i in range(6):
+        def go_ex(idx=i):
+            win.tabs.setCurrentIndex(2)
+            obj.select_exhibit(idx)
+        shots.append((f"objective-{i + 1}", go_ex))
+
+    def zst_eval():
+        win.tabs.setCurrentIndex(2)
+        obj.select_exhibit(5)
+        obj._exhibits[5][1]._evaluate()
+    shots.append(("zst-eval-start", zst_eval))
+    shots.append(("zst-eval-done", lambda: None))
+
+    def obj5_race():
+        win.tabs.setCurrentIndex(2)
+        obj.select_exhibit(4)
+        ex = obj._exhibits[4][1]
+        if hasattr(ex, "_contenders"):
+            for _ in range(40):
+                ex._race_tick()
+    shots.append(("objective-5-race", obj5_race))
+
+    def obj4_race():
+        win.tabs.setCurrentIndex(2)
+        obj.select_exhibit(3)
+        obj._exhibits[3][1]._run_race()
+    shots.append(("objective-4-race", obj4_race))
+
+    shots.append(("home-final", lambda: win.tabs.setCurrentIndex(0)))
+
     state = {"i": 0}
 
     def step():

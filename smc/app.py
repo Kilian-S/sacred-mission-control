@@ -54,6 +54,8 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.documents_tab, "Documents")
 
         self.history_tab.open_ledger.connect(self._open_ledger)
+        if hasattr(self.home_tab, "go_to"):
+            self.home_tab.go_to.connect(self.tabs.setCurrentIndex)
 
         for i in range(5):
             QShortcut(QKeySequence(f"Meta+{i + 1}"), self,

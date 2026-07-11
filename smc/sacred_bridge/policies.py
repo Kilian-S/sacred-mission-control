@@ -278,3 +278,36 @@ class LoadedPolicy:
 
 def load_policy(ref: ActorRef, inst: OracleInstance) -> LoadedPolicy:
     return LoadedPolicy(ref, inst)
+
+
+def random_init_distribution(inst: OracleInstance, seed: int = 0) -> np.ndarray:
+    """The untrained reference: a fresh net of the generalist architecture,
+    evaluated on the instance exactly like a loaded policy (computed live)."""
+    m = _torch_mods()
+    torch = m["torch"]
+    nfile, efile = _KNOWN_FILES[inst.city]
+    env = m["make_multiconvoy_env"](
+        od=(inst.s, inst.t), N=inst.N, K=inst.K, k_extra_routes=inst.k_extra,
+        edge_vuln_band=inst.band, absolute_vuln_norm=True, menu_select=True, seed=0,
+        nodes_path=str(MAPS_DIR / nfile), edges_path=str(MAPS_DIR / efile))
+    env.reset()
+    obs = env.observe()
+    torch.manual_seed(seed)
+    actor = m["ProtagonistPolicyValueNet"](node_in_dim=14, edge_in_dim=5,
+                                           hidden_dim=64, num_layers=2, heads=4)
+    actor.menu_routes = [torch.tensor(r, dtype=torch.long) for r in env.menu_route_node_idx()]
+    actor.follow_w = torch.nn.Parameter(torch.tensor(1.0))
+    actor.route_feat_w = torch.nn.Parameter(torch.zeros(2))
+    actor.route_feats = torch.zeros((env.game.n_routes, 2))
+    actor.eval()
+    pyg = m["featurize_state"](obs, 0)
+    pyg.x = m["_clip_x"](pyg.x, 14)
+    pyg.edge_attr = m["_clip_ea"](pyg.edge_attr, 5)
+    n2i = m["node_index_map"](obs)
+    R = env.game.n_routes
+    with torch.no_grad():
+        probs, _ = actor(pyg, n2i[obs["trucks"][0]["current_node"]], list(range(R)),
+                         torch.zeros(R))
+    d = probs.detach().cpu().numpy().astype(float).reshape(-1)
+    s = d.sum()
+    return d / s if s > 0 else np.full(R, 1.0 / R)

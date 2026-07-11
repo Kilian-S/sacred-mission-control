@@ -1,0 +1,172 @@
+# Curated ledger values that the Objectives/Home exhibits draw as charts.
+# Same provenance bar as the narrative index: every quote is verbatim from the
+# cited ledger (whitespace-normalised match, enforced by tests), and every
+# plotted value appears inside its quote.
+
+headline_ladders:
+  multiconvoy:
+    title: "The multi-convoy headline ladder (35-159, N=3, K=1)"
+    era: post-fix
+    ledger: experiments/gen14_evidence.md
+    unit: "mission-failure exploitability (lower is better)"
+    rows:
+      - arm: shortest_path
+        label: "Shortest path (naive stack)"
+        value: 0.912
+        quote: "| shortest_path | 0.912 | naive stack |"
+      - arm: alns_forced_stack
+        label: "ALNS forced to stack (fairness)"
+        value: 0.841
+        quote: "| ALNS forced-to-STACK (fairness) | 0.841 | ALNS is free to stack but SPREADS by choice |"
+      - arm: alns
+        label: "ALNS (spreads, = loss_det)"
+        value: 0.699
+        quote: "| ALNS (spread, = loss_det) | 0.699 | the deterministic-class optimum |"
+      - arm: vanilla
+        label: "Vanilla SAC (non-adversarial, best-ckpt)"
+        value: 0.526
+        quote: "| vanilla (non-adversarial SAC, n=3) | best-ckpt **0.526** / final 0.628 +/- 0.006 | see note |"
+      - arm: sacred
+        label: "SACRED (adversarial, n=10)"
+        value: 0.256
+        quote: "| **SACRED (adversarial, n=10)** | **0.256 [0.246, 0.266]** | the headline |"
+      - arm: equilibrium
+        label: "Equilibrium (loss_mixed)"
+        value: 0.206
+        quote: "| equilibrium (loss_mixed) | 0.206 | computable bound |"
+  singleconvoy:
+    title: "The single-convoy headline ladder (33-71, TAP, pooled)"
+    era: post-fix
+    ledger: experiments/gen10_postfix.md
+    unit: "interception exploitability (lower is better)"
+    shared_quote: "Ladder (TAP, pooled): shortest 1.000 > vanilla 0.480 > uniform 0.455 > **sacred 0.276** >> equilibrium 0.167."
+    rows:
+      - arm: shortest_path
+        label: "Shortest path"
+        value: 1.000
+      - arm: vanilla
+        label: "Vanilla SAC (non-adversarial)"
+        value: 0.480
+      - arm: uniform
+        label: "Uniform noise"
+        value: 0.455
+      - arm: sacred
+        label: "SACRED (adversarial)"
+        value: 0.276
+      - arm: equilibrium
+        label: "Equilibrium"
+        value: 0.167
+
+gen12_sweeps:
+  era: post-fix
+  ledger: experiments/gen12_sweeps.md
+  note: "SACRED best-checkpoint < ALNS in all 10 cells; single-seed curve points except hl N=3 K=1 (3 seeds)."
+  cells:
+    - od: "62-97"
+      cell: "N=3 K=1"
+      sacred: 0.483
+      alns: 0.699
+      eq: 0.216
+      quote: "| N=3 K=1 (3 seeds) | **0.483 +/- 0.041** | 0.699 | 0.216 | 2.24x |"
+    - od: "62-97"
+      cell: "N=3 K=2"
+      sacred: 0.759
+      alns: 0.907
+      eq: 0.432
+      quote: "| N=3 K=2 | 0.759 | 0.907 | 0.432 | 1.76x |"
+    - od: "62-97"
+      cell: "N=3 K=3"
+      sacred: 0.832
+      alns: 0.958
+      eq: 0.649
+      quote: "| N=3 K=3 | 0.832 | 0.958 | 0.649 | 1.28x |"
+    - od: "62-97"
+      cell: "N=2 K=1"
+      sacred: 0.341
+      alns: 0.690
+      eq: 0.190
+      quote: "| N=2 K=1 | 0.341 | 0.690 | 0.190 | 1.79x |"
+    - od: "62-97"
+      cell: "N=5 K=1"
+      sacred: 0.496
+      alns: 0.802
+      eq: 0.237
+      quote: "| N=5 K=1 | 0.496 | 0.802 | 0.237 | 2.09x |"
+    - od: "35-159"
+      cell: "N=3 K=1"
+      sacred: 0.261
+      alns: 0.699
+      eq: 0.206
+      quote: "| N=3 K=1 | **0.261** | 0.699 | 0.206 | **1.27x** |"
+    - od: "35-159"
+      cell: "N=3 K=2"
+      sacred: 0.500
+      alns: 0.866
+      eq: 0.412
+      quote: "| N=3 K=2 | 0.500 | 0.866 | 0.412 | 1.21x |"
+    - od: "35-159"
+      cell: "N=3 K=3"
+      sacred: 0.661
+      alns: 0.933
+      eq: 0.604
+      quote: "| N=3 K=3 | 0.661 | 0.933 | 0.604 | **1.09x** |"
+    - od: "35-159"
+      cell: "N=2 K=1"
+      sacred: 0.232
+      alns: 0.555
+      eq: 0.179
+      quote: "| N=2 K=1 | 0.232 | 0.555 | 0.179 | 1.30x |"
+    - od: "35-159"
+      cell: "N=5 K=1"
+      sacred: 0.389
+      alns: 0.719
+      eq: 0.230
+      quote: "| N=5 K=1 | 0.389 | 0.719 | 0.230 | 1.69x |"
+
+transfer_ladder:
+  era: post-fix
+  rungs:
+    - label: "Same graph, held-out OD (gen15)"
+      value: 1.59
+      ledger: experiments/gen15_generalist.md
+      quote: "**Held-out (zero-shot) best-checkpoint mean ratio 1.592 +/- 0.096 (3 seeds).**"
+    - label: "Held-out CITY, Gdansk (gen16)"
+      value: 1.68
+      ledger: experiments/gen16_multicity.md
+      quote: "**Held-out-CITY (Gdansk) best-checkpoint mean ratio 1.677 +/- 0.072 (3 seeds).**"
+    - label: "Single-source, different graph (A2): ties random"
+      value: 2.40
+      ledger: experiments/a2_graph_transfer.md
+      quote: "**The generalist TIES a random-init network (2.40 vs 2.41) and beats no held-out OD.**"
+
+gen19_ladder:
+  era: post-fix
+  ledger: experiments/gen19_b1lite1.md
+  quote: "static_det 0.613 > iid_eq/no-window 0.148 > **SACRED 0.050** ~ history_opt 0.049"
+  rows:
+    - label: "Fixed route (static_det)"
+      value: 0.613
+    - label: "History-blind mixing (iid_eq / no-window control)"
+      value: 0.148
+    - label: "SACRED history-aware"
+      value: 0.050
+    - label: "Dynamic optimum (history_opt)"
+      value: 0.049
+
+objectives_verbatim:
+  source: THESIS_STORYLINE.md
+  note: "The five objectives as promised in the assessed literature review, quoted from THESIS_STORYLINE.md 'The promise'."
+  aim: "develop and evaluate an adversarial, coevolutionary DRL framework (SACRED) generating robust, computationally efficient routing policies for the SDVRP"
+  items:
+    - id: obj1
+      quote: "(1) formulate the SDVRP as an asymmetric zero-sum Markov game with discrete action spaces for a protagonist dispatcher and an environment-altering antagonist"
+    - id: obj2
+      quote: "(2) build a visual, interactive simulation environment"
+    - id: obj3
+      quote: "(3) develop SAC + ATLA, and investigate ERB bootstrapping via population-based metaheuristics"
+    - id: obj4
+      quote: "(4) incorporate SBO for facility location/fleet composition"
+    - id: obj5
+      quote: "(5) evaluate performance and resilience against SOTA adaptive metaheuristics **and a non-adversarially trained SAC baseline** under varied network disruption"
+    - id: zst
+      quote: "The review's identified gaps: SAC unexamined in SDVRP; asymmetric coevolutionary dynamic-alteration adversaries unstudied in last-mile settings; ZST as the crown jewel."
