@@ -745,11 +745,14 @@ class Obj5Exhibit(ExhibitBase):
                         xycoords=("axes fraction", "data"), fontsize=8, ha="right",
                         va="bottom", color=colour)
         # ledger row that cannot be re-flown live (no vanilla checkpoint exists)
-        ax.axhline(0.526, color=theme.STRATEGY_COLOURS["vanilla"], linestyle="--",
-                   linewidth=1.2, alpha=0.9)
-        ax.annotate("vanilla 0.526 (ledger row, gen14: no checkpoint on disk)",
-                    xy=(0.0, 0.526), xycoords=("axes fraction", "data"), fontsize=8,
-                    va="bottom", color=theme.STRATEGY_COLOURS["vanilla"])
+        van = next((r for r in _exhibit_data()["headline_ladders"]["multiconvoy"]["rows"]
+                    if r["arm"] == "vanilla"), None)
+        if van:
+            ax.axhline(van["value"], color=theme.STRATEGY_COLOURS["vanilla"], linestyle="--",
+                       linewidth=1.2, alpha=0.9)
+            ax.annotate(f"vanilla {van['value']} (ledger row, gen14: no checkpoint on disk)",
+                        xy=(0.0, van["value"]), xycoords=("axes fraction", "data"), fontsize=8,
+                        va="bottom", color=theme.STRATEGY_COLOURS["vanilla"])
         ax.set_xlabel("sortie")
         ax.set_ylabel("running mission-failure rate")
         ax.set_ylim(-0.03, 1.03)
@@ -964,6 +967,15 @@ class ObjectivesTab(QWidget, Exportable):
         self.sidebar.currentRowChanged.connect(self._select)
         self.sidebar.setCurrentRow(0)
 
+        from PySide6.QtGui import QKeySequence, QShortcut
+        QShortcut(QKeySequence(Qt.Key_Space), self, activated=self._space,
+                  context=Qt.WidgetWithChildrenShortcut)
+
+    def _space(self) -> None:
+        w = self.stack.currentWidget()
+        if hasattr(w, "toggle_play"):
+            w.toggle_play()
+
     def _select(self, row: int) -> None:
         if 0 <= row < self.stack.count():
             self.stack.setCurrentIndex(row)
@@ -974,14 +986,6 @@ class ObjectivesTab(QWidget, Exportable):
 
     def select_exhibit(self, idx: int) -> None:
         self.sidebar.setCurrentRow(idx)
-
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Space:
-            w = self.stack.currentWidget()
-            if hasattr(w, "toggle_play"):
-                w.toggle_play()
-                return
-        super().keyPressEvent(event)
 
     def export_view(self):
         return export_widget_grab(self.stack.currentWidget(), self.export_name)

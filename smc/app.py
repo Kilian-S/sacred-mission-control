@@ -95,18 +95,23 @@ class MainWindow(QMainWindow):
 
     def _export_current(self) -> None:
         w = self.tabs.currentWidget()
-        if isinstance(w, Exportable):
-            try:
-                paths = w.export_view()
-            except Exception as exc:
-                self.statusBar().showMessage(f"Export failed: {exc}", 6000)
-                return
-            if paths:
-                self.statusBar().showMessage(
-                    f"Exported to {paths[0].parent}: " + ", ".join(p.name for p in paths), 8000
-                )
-        else:
+        if not isinstance(w, Exportable):
             self.statusBar().showMessage("This view does not export yet.", 4000)
+            return
+        try:
+            paths = list(w.export_view())
+            # every visible chart also exports as publication-quality PNG + SVG
+            from .widgets.charts import ChartWidget
+            from .widgets.export import export_figure
+            for chart in w.findChildren(ChartWidget):
+                if chart.isVisible() and chart.figure.axes:
+                    paths += export_figure(chart.figure, chart.export_name)
+        except Exception as exc:
+            self.statusBar().showMessage(f"Export failed: {exc}", 6000)
+            return
+        if paths:
+            self.statusBar().showMessage(
+                f"Exported {len(paths)} files to {paths[0].parent}", 8000)
 
 
 def main() -> int:

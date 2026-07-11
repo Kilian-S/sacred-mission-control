@@ -402,6 +402,15 @@ class WatchPanel(QWidget, Exportable):
                 src.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 10px;")
                 self.banked_body.addWidget(q)
                 self.banked_body.addWidget(src)
+        if self._inst is not None and p["banked"]:
+            cell0 = p["banked"][0].get("cell", "")
+            here = f"N={self._inst.N} K={self._inst.K}"
+            if here not in cell0:
+                m = QLabel(f"Note: the picker is at {here}; the anchors above were banked at "
+                           f"{cell0} and do not apply to the current cell.")
+                m.setWordWrap(True)
+                m.setStyleSheet(f"color: #8c2a22; font-size: 10px;")
+                self.banked_body.addWidget(m)
         self.banked_card.show()
 
     # ------------------------------------------------------------- sortie loop

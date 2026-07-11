@@ -393,8 +393,9 @@ class DuelPanel(QWidget, Exportable):
             return
         d = self._duel
         self.run_label.setText(
-            f"<b>{d.mean_loss:.3f}</b> mean per-sortie mission failure over {d.n} sorties "
-            f"(seed {d.seed})" if d.n else "No sorties yet.")
+            f"<b>{d.mean_loss:.3f}</b> mean expected per-sortie mission failure over {d.n} "
+            f"sorties (seed {d.seed}; the gen19 estimator: expected loss under each sortie's "
+            f"committed ambush)" if d.n else "No sorties yet.")
         ax = self.run_chart.clear()
         if d.history:
             ax.plot(range(1, len(d.history) + 1), d.history,
