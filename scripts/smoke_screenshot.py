@@ -54,6 +54,48 @@ def main() -> int:
         win.documents_tab.open_by_name("experiments/gen14_evidence.md")
     shots.append(("documents-ledger", open_doc))
 
+    # M3: the duel with the gen19 policy playing against the adaptive attacker
+    pg = win.playground_tab
+
+    def duel_select():
+        win.tabs.setCurrentIndex(1)
+        pg.mode_combo.setCurrentIndex(1)
+        d = pg.duel
+        for i in range(d.def_combo.count()):
+            if str(d.def_combo.itemData(i)).startswith("policy:gen19"):
+                d.def_combo.setCurrentIndex(i)
+                break
+    shots.append(("duel-load", duel_select))
+
+    def duel_run():
+        win.tabs.setCurrentIndex(1)
+        pg.duel._run_batch()
+    shots.append(("duel-batch", duel_run))
+    shots.append(("duel-batch2", duel_run))
+
+    # M3: the ambush mode against the equilibrium mixture, with a placed ambush
+    def ambush_mode():
+        win.tabs.setCurrentIndex(1)
+        pg.mode_combo.setCurrentIndex(2)
+        a = pg.ambush
+        for i in range(a.def_combo.count()):
+            if a.def_combo.itemData(i) == "equilibrium":
+                a.def_combo.setCurrentIndex(i)
+                break
+        if a._inst is not None and a._inst.K == 1 and a._inst.interdiction_sets:
+            iset = a._inst.interdiction_sets[len(a._inst.interdiction_sets) // 2]
+            uv = tuple(iset[0])
+            a._edge_clicked(str(uv[0]), str(uv[-1]))
+    shots.append(("ambush-placed", ambush_mode))
+
+    # back to watch mode with a batch run for the convergence chart
+    def watch_batch():
+        win.tabs.setCurrentIndex(1)
+        pg.mode_combo.setCurrentIndex(0)
+        if pg.watch._engine is not None:
+            pg.watch._run_batch()
+    shots.append(("watch-batch", watch_batch))
+
     state = {"i": 0}
 
     def step():

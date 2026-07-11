@@ -32,29 +32,49 @@ def _torch_mods():
     ensure_sacred_importable()
     import torch  # noqa: PLC0415
     from src.agents.sac import (  # noqa: PLC0415
-        ProtagonistSAC,
         _clip_ea,
         _clip_x,
         infer_edge_in_dim,
         infer_node_in_dim,
     )
-    from src.agents.networks import featurize_state, node_index_map  # noqa: PLC0415
+    from src.agents.networks import (  # noqa: PLC0415
+        ProtagonistPolicyValueNet,
+        featurize_state,
+        node_index_map,
+    )
     from src.envs.multiconvoy_interdiction import make_multiconvoy_env  # noqa: PLC0415
     return locals()
 
 
 @dataclass(frozen=True)
 class ActorRef:
-    """One loadable checkpoint from the post-fix live roster."""
+    """One loadable strategy from the post-fix live roster.
+
+    `ensemble` lists the checkpoints of the banked TAP window (the project's
+    deployable object = the trailing-averaged policy, a checkpoint ensemble);
+    `ckpt` is the window's final member."""
     key: str            # e.g. "gen14_seed1"
     family: str         # gen13_lock | gen14_evidence | gen15_generalist | gen16_multicity | gen19_b1lite1
     label: str
     ckpt: Path
     kind: str           # specialist | generalist | history_aware
     provenance: str     # short ledger pointer for captions
+    ensemble: tuple[Path, ...] = ()
+
+    @property
+    def members(self) -> tuple[Path, ...]:
+        return self.ensemble or (self.ckpt,)
 
 
-def _best_ckpt_of_multiconvoy(family: str, stem: str) -> tuple[Path, int] | None:
+def _tap_window(family: str, stem: str, ep: int, stride: int, tap_k: int) -> tuple[Path, ...]:
+    """The TAP ensemble: the tap_k per-eval checkpoints ending at ep."""
+    d = RUNS_DIR / family / f"{stem}_ckpts"
+    eps = [ep - i * stride for i in range(tap_k - 1, -1, -1) if ep - i * stride >= stride]
+    paths = tuple(d / f"actor_ep{e}.pt" for e in eps)
+    return tuple(p for p in paths if p.is_file())
+
+
+def _best_ckpt_of_multiconvoy(family: str, stem: str) -> tuple[Path, int, tuple[Path, ...]] | None:
     rf = read_json(RUNS_DIR / family / f"{stem}.json")
     if not rf.ok:
         return None
@@ -67,16 +87,20 @@ def _best_ckpt_of_multiconvoy(family: str, stem: str) -> tuple[Path, int] | None
         return None
     ep = int(res["best_tap_sortie"])
     p = RUNS_DIR / family / f"{stem}_ckpts" / f"actor_ep{ep}.pt"
-    return (p, ep) if p.is_file() else None
+    if not p.is_file():
+        return None
+    return (p, ep, _tap_window(family, stem, ep, stride=100, tap_k=5))
 
 
-def _best_ckpt_of_generalist(family: str, stem: str) -> tuple[Path, int] | None:
+def _best_ckpt_of_generalist(family: str, stem: str) -> tuple[Path, int, tuple[Path, ...]] | None:
     rf = read_json(RUNS_DIR / family / f"{stem}.json")
     if not rf.ok or rf.data.get("best_at") is None:
         return None
     ep = int(rf.data["best_at"])
     p = RUNS_DIR / family / f"{stem}_ckpts" / f"actor_ep{ep}.pt"
-    return (p, ep) if p.is_file() else None
+    if not p.is_file():
+        return None
+    return (p, ep, _tap_window(family, stem, ep, stride=500, tap_k=3))
 
 
 def _best_ckpt_of_b1lite(stem: str) -> tuple[Path, int] | None:
@@ -105,7 +129,8 @@ def discover_actors() -> list[ActorRef]:
                 f"gen13_seed{seed}", "gen13_lock",
                 f"SACRED gen13 seed {seed} (35-159 headline actor)",
                 hit[0], "specialist",
-                f"gen13_lock.md best checkpoint @ sortie {hit[1]}"))
+                f"gen13_lock.md best-TAP ensemble @ sortie {hit[1]}",
+                ensemble=hit[2]))
     for seed in range(10):
         hit = _best_ckpt_of_multiconvoy("gen14_evidence", f"mc_seed{seed}")
         if hit:
@@ -113,7 +138,8 @@ def discover_actors() -> list[ActorRef]:
                 f"gen14_seed{seed}", "gen14_evidence",
                 f"SACRED gen14 seed {seed} (35-159, n=10 evidence run)",
                 hit[0], "specialist",
-                f"gen14_evidence.md best checkpoint @ sortie {hit[1]}"))
+                f"gen14_evidence.md best-TAP ensemble @ sortie {hit[1]}",
+                ensemble=hit[2]))
     for seed in range(3):
         hit = _best_ckpt_of_generalist("gen15_generalist", f"seed{seed}")
         if hit:
@@ -121,14 +147,16 @@ def discover_actors() -> list[ActorRef]:
                 f"gen15_seed{seed}", "gen15_generalist",
                 f"Generalist gen15 seed {seed} (Kaliningrad, zero-shot across ODs)",
                 hit[0], "generalist",
-                f"gen15_generalist.md best checkpoint @ sortie {hit[1]}"))
+                f"gen15_generalist.md best-TAP ensemble @ sortie {hit[1]}",
+                ensemble=hit[2]))
         hit = _best_ckpt_of_generalist("gen16_multicity", f"seed{seed}")
         if hit:
             out.append(ActorRef(
                 f"gen16_seed{seed}", "gen16_multicity",
                 f"Multi-city generalist gen16 seed {seed} (zero-shot across cities)",
                 hit[0], "generalist",
-                f"gen16_multicity.md best checkpoint @ sortie {hit[1]}"))
+                f"gen16_multicity.md best-TAP ensemble @ sortie {hit[1]}",
+                ensemble=hit[2]))
     for seed in range(3):
         hit = _best_ckpt_of_b1lite(f"seed{seed}")
         if hit:
@@ -141,10 +169,12 @@ def discover_actors() -> list[ActorRef]:
 
 
 class LoadedPolicy:
-    """A loaded post-fix actor bound to one instance's route menu.
+    """A loaded post-fix strategy bound to one instance's route menu.
 
-    route_distribution(window_freq) -> np.ndarray [R]; window_freq is only
-    used by history-aware (gen19-style) actors and may be None otherwise.
+    Loads every member of the banked TAP window (the deployable object is the
+    trailing-averaged policy = a checkpoint ensemble) and averages their route
+    distributions. route_distribution(window_freq) -> np.ndarray [R];
+    window_freq is only used by history-aware (gen19-style) actors.
     """
 
     def __init__(self, ref: ActorRef, inst: OracleInstance):
@@ -152,10 +182,6 @@ class LoadedPolicy:
         self.inst = inst
         m = _torch_mods()
         torch = m["torch"]
-
-        state = torch.load(ref.ckpt, map_location="cpu", weights_only=True)
-        node_dim = m["infer_node_in_dim"](state, 14)
-        edge_dim = m["infer_edge_in_dim"](state, 4)
 
         # sacred env for the SAME instance (menus + observation)
         nfile, efile = _KNOWN_FILES[inst.city]
@@ -176,39 +202,44 @@ class LoadedPolicy:
                 "route menu mismatch between the oracle instance and the sacred env; "
                 "refusing to score the policy on a different game")
 
-        prot = m["ProtagonistSAC"](
-            node_in_dim=node_dim, edge_in_dim=edge_dim, hidden_dim=64,
-            num_layers=2, heads=4, device="cpu")
         menu_idx = [torch.tensor(r, dtype=torch.long) for r in env.menu_route_node_idx()]
-        actor = prot.actor
-        actor.menu_routes = menu_idx
-        if any(k == "follow_w" for k in state):
-            actor.follow_w = torch.nn.Parameter(torch.tensor(1.0))
-        self._feat_cols = 0
-        if any(k == "route_feat_w" for k in state):
-            width = int(state["route_feat_w"].shape[0])
-            self._feat_cols = width
-            actor.route_feat_w = torch.nn.Parameter(torch.zeros(width))
-            actor.route_feats = None
-        if any(k == "route_bias" for k in state):
-            actor.route_bias = torch.nn.Parameter(torch.zeros(env.game.n_routes))
-        actor.load_state_dict(state)
-        actor.eval()
-
+        self._R = env.game.n_routes
         self._torch = torch
-        self._actor = actor
-        self._prot = prot
-        self._clip_x = m["_clip_x"]
-        self._clip_ea = m["_clip_ea"]
         self._env = env
-        self._obs = obs
-        pyg = m["featurize_state"](obs, 0)
-        pyg.x = self._clip_x(pyg.x, node_dim)
-        pyg.edge_attr = self._clip_ea(pyg.edge_attr, edge_dim)
+        self._feat_cols = 0
+        self._actors = []
+
+        pyg = None
+        for path in ref.members:
+            state = torch.load(path, map_location="cpu", weights_only=True)
+            node_dim = m["infer_node_in_dim"](state, 14)
+            edge_dim = m["infer_edge_in_dim"](state, 4)
+            actor = m["ProtagonistPolicyValueNet"](
+                node_in_dim=node_dim, edge_in_dim=edge_dim,
+                hidden_dim=64, num_layers=2, heads=4)
+            actor.menu_routes = menu_idx
+            if any(k == "follow_w" for k in state):
+                actor.follow_w = torch.nn.Parameter(torch.tensor(1.0))
+            if any(k == "route_feat_w" for k in state):
+                width = int(state["route_feat_w"].shape[0])
+                self._feat_cols = width
+                actor.route_feat_w = torch.nn.Parameter(torch.zeros(width))
+                actor.route_feats = None
+            if any(k == "route_bias" for k in state):
+                actor.route_bias = torch.nn.Parameter(torch.zeros(self._R))
+            actor.load_state_dict(state)
+            actor.eval()
+            if pyg is None:
+                pyg = m["featurize_state"](obs, 0)
+                pyg.x = m["_clip_x"](pyg.x, node_dim)
+                pyg.edge_attr = m["_clip_ea"](pyg.edge_attr, edge_dim)
+            self._actors.append(actor)
+        if not self._actors:
+            raise RuntimeError(f"no checkpoint members found for {ref.key}")
+
         self._pyg = pyg
         n2i = m["node_index_map"](obs)
         self._active_idx = n2i[obs["trucks"][0]["current_node"]]
-        self._R = env.game.n_routes
 
         # static route features (min-max cost, worst vulnerability), per the recipes
         c = np.asarray(env.game.travel_cost, dtype=float)
@@ -221,19 +252,24 @@ class LoadedPolicy:
 
     def route_distribution(self, window_freq: np.ndarray | None = None) -> np.ndarray:
         torch = self._torch
+        feats = None
         if self._feat_cols == 2:
             feats = torch.tensor(self._static_feats, dtype=torch.float32)
-            self._actor.route_feats = feats
         elif self._feat_cols == 3:
             wf = np.zeros(self._R) if window_freq is None else np.asarray(window_freq, float)
-            feats = np.concatenate([self._static_feats, wf.reshape(-1, 1)], axis=1)
-            self._actor.route_feats = torch.tensor(feats, dtype=torch.float32)
+            arr = np.concatenate([self._static_feats, wf.reshape(-1, 1)], axis=1)
+            feats = torch.tensor(arr, dtype=torch.float32)
+        acc = np.zeros(self._R)
         with torch.no_grad():
-            probs, _ = self._actor(self._pyg, self._active_idx, list(range(self._R)),
-                                   torch.zeros(self._R))
-        d = probs.detach().cpu().numpy().astype(float).reshape(-1)
-        s = d.sum()
-        return d / s if s > 0 else np.full(self._R, 1.0 / self._R)
+            for actor in self._actors:
+                if feats is not None:
+                    actor.route_feats = feats
+                probs, _ = actor(self._pyg, self._active_idx, list(range(self._R)),
+                                 torch.zeros(self._R))
+                acc += probs.detach().cpu().numpy().astype(float).reshape(-1)
+        acc /= len(self._actors)
+        s = acc.sum()
+        return acc / s if s > 0 else np.full(self._R, 1.0 / self._R)
 
     @property
     def is_history_aware(self) -> bool:
