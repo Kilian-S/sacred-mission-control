@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from . import runs
+from .paths import TB_DIR
 from .runs import (
     B1LITE_HISTORY_FIELDS,
     C1_HISTORY_FIELDS,
@@ -185,6 +186,72 @@ def load_gen_chart(gen_id: str) -> dict[str, Any]:
     if not series:
         return {"error": "run JSONs present but unreadable (possibly mid-write); try again"}
     return {"kind": kind, "note": spec["note"], "series": series, "refs": refs, "sources": sources}
+
+
+# the campaign story tags, in preference order: the flat delivery-rate plateau
+# is the chapter's central evidence; Q-spread collapse and reward are fallbacks
+_TB_PREFERRED_TAGS = (
+    "Episode/Delivery_Rate",
+    "Value/Protagonist_Q_Spread",
+    "Episode/Protagonist_Reward",
+)
+
+
+def _short_tb_label(rel: str) -> str:
+    return rel if len(rel) <= 34 else rel[:18] + "…" + rel[-13:]
+
+
+def load_tb_chart(gen_id: str, tb_runs: tuple[str, ...]) -> dict[str, Any]:
+    """Campaign-era TensorBoard scalars, read lazily in a worker.
+
+    One comparable tag per chart (the first preferred tag found); every
+    events file under each listed run directory becomes one series."""
+    try:
+        from tensorboard.backend.event_processing.event_accumulator import (  # noqa: PLC0415
+            EventAccumulator,
+        )
+    except ImportError:
+        return {"error": "tensorboard reader not installed in this venv"}
+
+    series: list[dict[str, Any]] = []
+    sources: list[str] = []
+    used_tag: str | None = None
+    for run in tb_runs:
+        d = TB_DIR / run
+        if not d.is_dir():
+            continue
+        for ev in sorted(d.rglob("events.out.tfevents.*"))[:4]:
+            try:
+                acc = EventAccumulator(str(ev.parent), size_guidance={"scalars": 0})
+                acc.Reload()
+                tags = acc.Tags().get("scalars", [])
+                tag = next((t for t in _TB_PREFERRED_TAGS if t in tags), None)
+                if tag is None or (used_tag is not None and tag != used_tag):
+                    continue
+                used_tag = tag
+                sc = acc.Scalars(tag)
+                rel = str(ev.parent.relative_to(TB_DIR))
+                series.append({
+                    "label": _short_tb_label(rel),
+                    "x": [p.step for p in sc],
+                    "y": [p.value for p in sc],
+                })
+                sources.append(rel)
+            except Exception:
+                continue  # unreadable events file: skip, never crash the card
+        if len(series) >= 6:
+            break
+    if not series:
+        return {"error": "no readable tfevents with a known scalar tag under logs/tb_runs"}
+    return {
+        "kind": "tb",
+        "tag": used_tag,
+        "note": f"TensorBoard scalar {used_tag} per training run (bold = rolling mean, faint = raw)",
+        "series": series,
+        "refs": {},
+        "sources": sources,
+        "source_root": "logs/tb_runs/",
+    }
 
 
 def _load_zst0() -> dict[str, Any]:

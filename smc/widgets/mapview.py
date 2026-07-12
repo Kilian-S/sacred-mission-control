@@ -92,6 +92,7 @@ class MapView(QGraphicsView):
         self._hover_idx = -1
         self._edge_click_mode = False
         self._route_click_mode = False
+        self._display_name = ""
 
     # ------------------------------------------------------------- zoom/pan
 
@@ -110,20 +111,30 @@ class MapView(QGraphicsView):
         self._convoys = []
         self._city = city
         self._pos = city.projected()
+        self._display_name = city.city.replace("_", " ").title()
 
-        # one path for the whole background network (fast even for Kyiv)
-        path = QPainterPath()
-        for u, v, _l in city.edges:
+        # two paths for the background network (fast even for Kyiv): longer
+        # edges are the arterials, drawn heavier, so the city reads as a city
+        # rather than a uniform scribble
+        lengths = sorted(l for _u, _v, l in city.edges)
+        cut = lengths[int(0.65 * (len(lengths) - 1))] if lengths else 0.0
+        minor, major = QPainterPath(), QPainterPath()
+        for u, v, length in city.edges:
             pts = self._edge_points(u, v)
             if not pts:
                 continue
+            path = major if length >= cut else minor
             path.moveTo(pts[0])
             for p in pts[1:]:
                 path.lineTo(p)
-        bg = QGraphicsPathItem(path)
-        bg.setPen(QPen(QColor(theme.GRID), 4.0))
-        bg.setZValue(0)
-        self._scene.addItem(bg)
+        bg_minor = QGraphicsPathItem(minor)
+        bg_minor.setPen(QPen(QColor(theme.GRID), 3.0))
+        bg_minor.setZValue(0)
+        self._scene.addItem(bg_minor)
+        bg_major = QGraphicsPathItem(major)
+        bg_major.setPen(QPen(QColor("#d6d5cb"), 6.0))
+        bg_major.setZValue(0)
+        self._scene.addItem(bg_major)
         self.fit_all()
 
     def fit_all(self) -> None:
@@ -513,6 +524,39 @@ class MapView(QGraphicsView):
                 pen.setWidthF(10 + 55 * p)
             pen.setColor(c)
             rd.item.setPen(pen)
+
+    # ------------------------------------------------------------- overlay
+
+    def drawForeground(self, painter: QPainter, rect) -> None:
+        """Viewport-fixed cartographic furniture: the city name and a scale
+        bar (scene units are metres from the equirectangular projection)."""
+        super().drawForeground(painter, rect)
+        if self._city is None:
+            return
+        painter.save()
+        painter.resetTransform()
+        if self._display_name:
+            f = QFont(theme.FONT_FAMILY, 11)
+            f.setBold(True)
+            painter.setFont(f)
+            painter.setPen(QColor(theme.INK_SECONDARY))
+            painter.drawText(12, 22, self._display_name)
+        m11 = abs(self.transform().m11())  # metres -> viewport px
+        if m11 > 0:
+            vh = self.viewport().height()
+            candidates = (20, 50, 100, 200, 500, 1000, 2000, 5000, 10000)
+            metres = next((c for c in candidates if 60 <= c * m11 <= 160), None)
+            if metres is not None:
+                px = int(metres * m11)
+                y = vh - 14
+                painter.setPen(QPen(QColor(theme.INK_SECONDARY), 2))
+                painter.drawLine(12, y, 12 + px, y)
+                painter.drawLine(12, y - 4, 12, y + 4)
+                painter.drawLine(12 + px, y - 4, 12 + px, y + 4)
+                painter.setFont(QFont(theme.FONT_FAMILY, 9))
+                label = f"{metres} m" if metres < 1000 else f"{metres / 1000:g} km"
+                painter.drawText(12 + px + 6, y + 4, label)
+        painter.restore()
 
     def mousePressEvent(self, event):
         scene_pos = self.mapToScene(event.position().toPoint())

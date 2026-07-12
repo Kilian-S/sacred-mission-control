@@ -562,9 +562,19 @@ class Obj4Exhibit(ExhibitBase):
         c = self.card("The surrogate: predicted vs true design quality (F3, 450 designs)")
         self.scatter = ChartWidget(title="obj4-surrogate-scatter", height=3.2, width=7.2)
         c.layout_().addWidget(self.scatter)
-        self.design_label = QLabel("Click a point to inspect the design.")
+        self.design_label = QLabel("Click a point to see that design as a game on the map below.")
         self.design_label.setWordWrap(True)
         c.layout_().addWidget(self.design_label)
+        self.design_map = MapView()
+        self.design_map.setMinimumHeight(360)
+        c.layout_().addWidget(self.design_map)
+        self.design_caption = QLabel("")
+        self.design_caption.setWordWrap(True)
+        self.design_caption.setStyleSheet(
+            f"color: {theme.LIVE_ACCENT}; font-size: 10px; font-weight: 600;")
+        c.layout_().addWidget(self.design_caption)
+        self._design_seq = 0
+        self._design_city_loaded = False
 
         c2 = self.card("The acquisition loop, raced live against random search")
         row = QWidget()
@@ -653,6 +663,33 @@ class Obj4Exhibit(ExhibitBase):
             f"Design: OD <b>{r['od']}</b>, fleet N={r['N']} · true {r['true']:.3f}, "
             f"predicted {r['pred']:.3f} · a placement is an (origin base, destination FOB) "
             f"pair; the design objective is the equilibrium mission-failure of the resulting game.")
+        self._design_seq += 1
+        seq = self._design_seq
+        self.design_caption.setText(f"solving the design {r['od']} N={r['N']} live…")
+        s, t = str(r["od"]).split("-")
+        run_in_background(
+            oracle_bridge.build_instance, "kaliningrad", s, t, 1, int(r["N"]), 8, (0.15, 0.95),
+            on_done=lambda inst, my=seq: self._design_ready(inst, my),
+            on_fail=lambda tb, my=seq: (self.design_caption.setText("design solve failed")
+                                        if my == self._design_seq else None))
+
+    def _design_ready(self, inst, seq: int) -> None:
+        if seq != self._design_seq:
+            return  # another design was clicked meanwhile
+        if not self._design_city_loaded:
+            self.design_map.set_city(inst.city_map)
+            self._design_city_loaded = True
+        self.design_map.show_instance(inst.routes, inst.edge_vuln, inst.s, inst.t)
+        marg = np.zeros(inst.n_routes)
+        for i, occ in enumerate(inst.occupancies):
+            p = inst.mc_defender[i]
+            if p > 0:
+                for ri, c in enumerate(occ):
+                    marg[ri] += p * c / inst.N
+        self.design_map.set_route_mixture(list(marg))
+        self.design_caption.setText(
+            f"computed live · the design {inst.s}-{inst.t} (N={inst.N}) as a game: equilibrium "
+            f"mixture drawn; loss_mixed {inst.mc_value:.3f}, loss_det {inst.mc_loss_det:.3f}")
 
     def _run_race(self) -> None:
         if not getattr(self, "_f3", None):

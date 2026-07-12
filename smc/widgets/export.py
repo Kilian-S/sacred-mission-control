@@ -44,6 +44,37 @@ def export_widget_grab(widget: QWidget, name: str) -> list[Path]:
     return [png]
 
 
+def export_view_vector(view, name: str) -> list[Path]:
+    """A QGraphicsView (the map) as a true vector SVG plus a 3x PNG, at the
+    current composition (what the user sees, including the scale bar)."""
+    from PySide6.QtCore import QRectF, QSize
+    from PySide6.QtGui import QColor, QImage, QPainter
+    from PySide6.QtSvg import QSvgGenerator
+
+    from .. import theme
+
+    png, svg = export_paths(name)
+    w, h = view.viewport().width(), view.viewport().height()
+    gen = QSvgGenerator()
+    gen.setFileName(str(svg))
+    gen.setSize(QSize(w, h))
+    gen.setViewBox(QRectF(0, 0, w, h))
+    gen.setTitle(name)
+    painter = QPainter(gen)
+    view.render(painter)
+    painter.end()
+
+    img = QImage(w * 3, h * 3, QImage.Format_ARGB32)
+    img.fill(QColor(theme.SURFACE))
+    painter = QPainter(img)
+    painter.setRenderHint(QPainter.Antialiasing)
+    painter.scale(3, 3)
+    view.render(painter)
+    painter.end()
+    img.save(str(png))
+    return [png, svg]
+
+
 class Exportable:
     """Mixin: widgets that know how to export themselves override export_view."""
 

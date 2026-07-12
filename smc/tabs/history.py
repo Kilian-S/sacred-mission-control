@@ -11,6 +11,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import numpy as np
+
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont, QMovie, QPixmap
 from PySide6.QtWidgets import (
@@ -279,6 +281,20 @@ class HistoryTab(QWidget, Exportable):
                 on_done=lambda payload, card=cc, ph=placeholder, cur=gid: self._chart_done(cur, card, ph, payload),
                 on_fail=lambda tb, card=cc, ph=placeholder: ph.setText("Chart failed to load."),
             )
+        elif g.tb_runs:
+            cc = Card()
+            ch = QLabel("Training record (TensorBoard)")
+            ch.setProperty("h3", True)
+            cc.layout_().addWidget(ch)
+            placeholder = StateLabel("Reading tfevents…", "loading")
+            cc.layout_().addWidget(placeholder)
+            self.card_lay.insertWidget(self.card_lay.count() - 1, cc)
+            gid = g.id
+            run_in_background(
+                gen_charts.load_tb_chart, gid, g.tb_runs,
+                on_done=lambda payload, card=cc, ph=placeholder, cur=gid: self._chart_done(cur, card, ph, payload),
+                on_fail=lambda tb, card=cc, ph=placeholder: ph.setText("tfevents failed to load."),
+            )
 
         # ---- figures
         figs = [SACRED_ROOT / f for f in g.figures]
@@ -368,6 +384,15 @@ class HistoryTab(QWidget, Exportable):
                 else:
                     colour = palette[i % len(palette)] if not many else theme.BLUE
                 alpha = 0.55 if many else 1.0
+                if kind == "tb" and len(s["y"]) > 80:
+                    # noisy per-episode scalars: faint raw cloud + bold rolling mean
+                    y = np.asarray(s["y"], dtype=float)
+                    k = max(5, len(y) // 60)
+                    smooth = np.convolve(y, np.ones(k) / k, mode="same")
+                    ax.plot(s["x"], y, color=colour, alpha=0.16, linewidth=0.7)
+                    ax.plot(s["x"], smooth, color=colour, linewidth=1.8,
+                            label=s["label"] if len(series) <= 8 else None)
+                    continue
                 ax.plot(s["x"], s["y"], color=colour, alpha=alpha,
                         linewidth=1.4 if many else 2.0, label=s["label"] if len(series) <= 8 else None)
                 if s.get("y2"):
@@ -396,6 +421,9 @@ class HistoryTab(QWidget, Exportable):
                 ax.set_ylabel("per-sortie mission failure")
             elif kind == "f2":
                 ax.set_ylabel("exploitability (oracle BR)")
+            elif kind == "tb":
+                ax.set_ylabel(payload.get("tag", ""))
+                ax.set_xlabel("episode")
             else:
                 ax.set_ylabel("exploitability (TAP)")
             if len(series) <= 8:
@@ -405,7 +433,8 @@ class HistoryTab(QWidget, Exportable):
         more = len(payload.get("sources", [])) - 4
         if more > 0:
             src += f" (+{more} more)"
-        chart.set_caption(f"{payload['note']}   ·   source: models/runs/{src}", "ledger")
+        root = payload.get("source_root", "models/runs/")
+        chart.set_caption(f"{payload['note']}   ·   source: {root}{src}", "ledger")
         card.layout_().addWidget(chart)
         chart.redraw()
 

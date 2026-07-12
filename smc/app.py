@@ -103,10 +103,16 @@ class MainWindow(QMainWindow):
             paths = list(w.export_view())
             # every visible chart also exports as publication-quality PNG + SVG
             from .widgets.charts import ChartWidget
-            from .widgets.export import export_figure
+            from .widgets.export import export_figure, export_view_vector
+            from .widgets.mapview import MapView
             for chart in w.findChildren(ChartWidget):
                 if chart.isVisible() and chart.figure.axes:
                     paths += export_figure(chart.figure, chart.export_name)
+            # every visible map view exports as vector SVG + 3x PNG too
+            maps = [m for m in w.findChildren(MapView) if m.isVisible()]
+            for i, mv in enumerate(maps):
+                suffix = "map" if len(maps) == 1 else f"map{i + 1}"
+                paths += export_view_vector(mv, f"{getattr(w, 'export_name', 'view')}-{suffix}")
         except Exception as exc:
             self.statusBar().showMessage(f"Export failed: {exc}", 6000)
             return
