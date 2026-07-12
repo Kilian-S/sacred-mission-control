@@ -208,7 +208,8 @@ class HomeTab(QWidget, Exportable):
             for a, b in zip(nodes[:-1], nodes[1:]):
                 e = frozenset({a, b})
                 if e in iset and self._rng.random() < self._inst.edge_vuln.get(e, 1.0):
-                    hit = self._edge_frac(route, (a, b))
+                    fe = self.map.fraction_of_edge(route, (a, b))
+                    hit = fe if fe is not None else self._edge_frac(route, (a, b))
                     break
             self._caught.append(hit)
         self._flashed = [False, False]

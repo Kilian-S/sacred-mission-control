@@ -390,24 +390,47 @@ class DuelPanel(QWidget, Exportable):
         self._dots = [self.map.add_convoy(
             theme.STRATEGY_COLOURS["human"] if self.def_combo.currentData() == "human"
             else theme.STRATEGY_COLOURS["sacred"]) for _ in range(self._inst.N)]
-        self._anim = {"route": route, "frac": 0.0, "res": res}
+        # if caught, the fleet dies AT the ambush: stop at the first route edge
+        # in the committed interdiction set, not at the destination
+        stop = 1.0
+        if res["caught_sampled"]:
+            nodes = self._inst.routes[route]
+            iset_set = set(iset)
+            for a, b in zip(nodes[:-1], nodes[1:]):
+                if frozenset({a, b}) in iset_set:
+                    fe = self.map.fraction_of_edge(route, (a, b))
+                    if fe is not None:
+                        stop = fe
+                    break
+        self._anim = {"route": route, "frac": 0.0, "res": res,
+                      "stop": stop, "sprung": False}
         self._timer.start()
 
     def _tick(self) -> None:
         if self._anim is None:
             return
-        self._anim["frac"] += 0.014
-        frac = min(1.0, self._anim["frac"])
+        anim = self._anim
+        anim["frac"] += 0.014
+        frac = min(1.0, anim["frac"])
+        res = anim["res"]
+        caught = res["caught_sampled"]
+        stop = anim["stop"] if caught else 1.0
         for i, dot in enumerate(self._dots):
-            f = max(0.0, frac - 0.045 * i)  # convoys travel in file
-            self.map.place_on_route(dot, self._anim["route"], f)
-        if frac >= 1.0:
-            res = self._anim["res"]
+            # convoys travel in file; on interception the column halts behind the lead
+            f = max(0.0, min(frac - 0.045 * i, max(0.0, stop - 0.03 * i)))
+            self.map.place_on_route(dot, anim["route"], f)
+        if caught and not anim["sprung"] and frac >= stop:
+            # the ambush springs the moment the lead convoy reaches it
+            anim["sprung"] = True
             self.map.reveal_ambush()
-            if res["caught_sampled"]:
-                for dot in self._dots:
-                    self.map.flash(dot)
-                    self.map.mark_lost(dot)
+            for dot in self._dots:
+                self.map.flash(dot)
+                self.map.mark_lost(dot)
+            # a short dwell so the loss reads, then the sortie ends
+            anim["frac"] = max(anim["frac"], 1.0 - 0.014 * 16)
+        if frac >= 1.0:
+            if not caught:
+                self.map.reveal_ambush()
             self._anim = None
             self._timer.stop()
             self._show_mixture()

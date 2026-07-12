@@ -462,7 +462,8 @@ class WatchPanel(QWidget, Exportable):
             caught_e = self._outcome.caught_edge[ci]
             stop_frac = 1.0
             if caught_e is not None:
-                stop_frac = self._edge_frac(r, caught_e)
+                fe = self.map.fraction_of_edge(r, caught_e)
+                stop_frac = fe if fe is not None else self._edge_frac(r, caught_e)
             f = min(frac, stop_frac)
             self.map.place_on_route(dot, r, f)
             if caught_e is not None and frac >= stop_frac and not self._flashed[ci]:
@@ -481,6 +482,7 @@ class WatchPanel(QWidget, Exportable):
             self._begin_sortie()
 
     def _edge_frac(self, route_idx: int, edge: tuple[str, str]) -> float:
+        """Edge-count fallback for routes the map could not draw."""
         if self._inst is None:
             return 1.0
         nodes = self._inst.routes[route_idx]

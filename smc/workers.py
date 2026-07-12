@@ -22,7 +22,13 @@ class Worker(QRunnable):
         self.args = args
         self.kwargs = kwargs
         self.signals = WorkerSignals()
-        self.setAutoDelete(True)
+        # Lifetime is managed by run_in_background's registry, NOT the pool:
+        # with autoDelete the pool destroys the runnable (and its signals
+        # QObject) the moment run() returns, so a QUEUED finished/failed
+        # emission is dropped whenever the UI thread has not yet processed it.
+        # That was a real, intermittent lost-result race (stuck "loading…"
+        # states, the flaky smoke).
+        self.setAutoDelete(False)
 
     def run(self) -> None:  # noqa: D102
         try:
@@ -39,6 +45,9 @@ class Worker(QRunnable):
                 pass
 
 
+_ACTIVE: set[Worker] = set()
+
+
 def run_in_background(
     fn: Callable[..., Any],
     *args,
@@ -48,12 +57,25 @@ def run_in_background(
 ) -> Worker:
     """Convenience: schedule fn on the global pool, wire callbacks, return the worker.
 
-    The caller must keep the connection targets alive (normal Qt ownership).
+    The worker is held in a module registry until its finished/failed signal
+    has actually been DELIVERED on the UI thread, so a queued emission can
+    never be dropped because the pool deleted the sender first. The caller
+    must keep the connection targets alive (normal Qt ownership).
     """
     w = Worker(fn, *args, **kwargs)
-    if on_done is not None:
-        w.signals.finished.connect(on_done)
-    if on_fail is not None:
-        w.signals.failed.connect(on_fail)
+    _ACTIVE.add(w)
+
+    def _done(result):
+        _ACTIVE.discard(w)
+        if on_done is not None:
+            on_done(result)
+
+    def _fail(tb):
+        _ACTIVE.discard(w)
+        if on_fail is not None:
+            on_fail(tb)
+
+    w.signals.finished.connect(_done)
+    w.signals.failed.connect(_fail)
     QThreadPool.globalInstance().start(w)
     return w

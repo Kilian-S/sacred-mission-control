@@ -23,6 +23,7 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import (
     QGraphicsEllipseItem,
     QGraphicsItem,
+    QGraphicsLineItem,
     QGraphicsPathItem,
     QGraphicsScene,
     QGraphicsSimpleTextItem,
@@ -339,6 +340,31 @@ class MapView(QGraphicsView):
             self._scene.removeItem(c)
         self._convoys = []
 
+    def fraction_of_edge(self, route_idx: int, edge: tuple[str, str]) -> float | None:
+        """Scene-length fraction of a point just past the middle of `edge`
+        along the route, or None if the edge is not on the drawn route.
+
+        This is the same parameterisation place_on_route uses, so a convoy
+        stopped at this fraction dies ON the ambush edge, not a block away
+        (edge-count fractions diverge from scene-length fractions whenever
+        edge lengths vary, which on real city graphs is always)."""
+        if route_idx >= len(self._routes):
+            return None
+        rd = self._routes[route_idx]
+        total = rd.cum_lengths[-1]
+        if total <= 0:
+            return None
+        key = _ekey(str(edge[0]), str(edge[1]))
+        lo = hi = None
+        for i, e in enumerate(rd.edge_of_segment):
+            if e == key and i + 1 < len(rd.cum_lengths):
+                if lo is None:
+                    lo = rd.cum_lengths[i]
+                hi = rd.cum_lengths[i + 1]
+        if lo is None or hi is None:
+            return None
+        return (lo + 0.55 * (hi - lo)) / total
+
     def place_on_route(self, dot: ConvoyDot, route_idx: int, frac: float) -> _EDGE_KEY | None:
         """Move a convoy dot to fraction `frac` along a route; returns the
         graph edge under the dot (for interception checks)."""
@@ -394,7 +420,16 @@ class MapView(QGraphicsView):
         timer.start(28)
 
     def mark_lost(self, dot: ConvoyDot) -> None:
-        dot.setBrush(QBrush(QColor(theme.STRATEGY_COLOURS["shortest_path"])))
+        """The convoy is destroyed: it KEEPS its strategy colour (identity is
+        the story) and gains a cross; it is never repainted another
+        strategy's colour."""
+        r = dot.rect().width() / 2
+        for x1, y1, x2, y2 in ((-r, -r, r, r), (-r, r, r, -r)):
+            line = QGraphicsLineItem(x1, y1, x2, y2, dot)
+            pen = QPen(QColor(theme.INK), r * 0.4)
+            pen.setCapStyle(Qt.RoundCap)
+            line.setPen(pen)
+            line.setZValue(51)
 
     # ------------------------------------------------------------- input modes
 
