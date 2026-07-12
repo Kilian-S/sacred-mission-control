@@ -8,6 +8,7 @@ link into the Documents tab."""
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
@@ -27,7 +28,7 @@ from PySide6.QtWidgets import (
 from .. import theme
 from ..sacred_bridge import gen_charts
 from ..sacred_bridge.ledgers import Generation, load_narrative_index
-from ..sacred_bridge.paths import SACRED_ROOT
+from ..sacred_bridge.paths import RUNS_DIR, SACRED_ROOT
 from ..widgets.cards import Card, EraBadge, StateLabel, StatusPill, hrule
 from ..widgets.charts import ChartWidget
 from ..widgets.export import Exportable, export_widget_grab
@@ -50,11 +51,23 @@ class HistoryTab(QWidget, Exportable):
         split = QSplitter(Qt.Horizontal)
         lay.addWidget(split)
 
+        side = QWidget()
+        side_lay = QVBoxLayout(side)
+        side_lay.setContentsMargins(0, 0, 0, 0)
+        side_lay.setSpacing(6)
+        self.banner = QLabel()
+        self.banner.setWordWrap(True)
+        self.banner.setStyleSheet(
+            f"background: {theme.ERA_PREFIX_BG}; color: {theme.ERA_PREFIX_FG};"
+            "border-radius: 6px; padding: 7px 9px; font-size: 11px;")
+        self.banner.hide()
+        side_lay.addWidget(self.banner)
         self.sidebar = QListWidget()
         self.sidebar.setWordWrap(True)
         self.sidebar.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.sidebar.currentItemChanged.connect(self._select)
-        split.addWidget(self.sidebar)
+        side_lay.addWidget(self.sidebar)
+        split.addWidget(side)
 
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
@@ -112,6 +125,27 @@ class HistoryTab(QWidget, Exportable):
             if self.sidebar.item(i).data(_ROLE_GEN):
                 self.sidebar.setCurrentRow(i)
                 break
+
+        # honesty about the growing sacred repo: run families on disk with no
+        # curated record here are flagged rather than silently missing
+        fresh = self._uncurated_families(gens)
+        if fresh:
+            self.banner.setText(
+                "New in sacred, not yet curated here: " + ", ".join(fresh)
+                + ". Add records to data/narrative_index.yaml (quotes verbatim) "
+                  "and, for charts, a spec in gen_charts._FAMILY_SPECS.")
+            self.banner.show()
+
+    @staticmethod
+    def _uncurated_families(gens) -> list[str]:
+        ids = {g.id for g in gens}
+        out = []
+        if RUNS_DIR.is_dir():
+            for d in sorted(RUNS_DIR.iterdir()):
+                m = re.match(r"(gen\d+)", d.name)
+                if d.is_dir() and m and m.group(1) not in ids:
+                    out.append(d.name)
+        return out
 
     def select_generation(self, gen_id: str) -> None:
         for i in range(self.sidebar.count()):
@@ -258,9 +292,13 @@ class HistoryTab(QWidget, Exportable):
                 if f.suffix.lower() == ".gif":
                     ml = QLabel()
                     movie = QMovie(str(f))
+                    # scaledSize() is invalid before the first frame, so scale
+                    # from the decoded frame or the 1300px gif overflows the pane
+                    movie.jumpToFrame(0)
+                    native = movie.currentImage().size()
+                    if native.isValid() and native.width() > 760:
+                        movie.setScaledSize(native.scaled(760, 560, Qt.KeepAspectRatio))
                     ml.setMovie(movie)
-                    movie.setScaledSize(movie.scaledSize().boundedTo(
-                        movie.scaledSize().scaled(760, 560, Qt.KeepAspectRatio)))
                     movie.start()
                     fc.layout_().addWidget(ml)
                 else:

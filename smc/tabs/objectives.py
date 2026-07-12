@@ -341,6 +341,8 @@ class Obj3Exhibit(ExhibitBase):
         rl.addLayout(self.era_badge_host)
         rl.addStretch(1)
         c.layout_().addWidget(row)
+        self.family_state = StateLabel("Loading run artefacts…", "loading")
+        c.layout_().addWidget(self.family_state)
         self.traj = ChartWidget(title="obj3-tap", height=3.0, width=7.4)
         c.layout_().addWidget(self.traj)
         self.temps = ChartWidget(title="obj3-temperatures", height=2.4, width=7.4)
@@ -418,9 +420,20 @@ class Obj3Exhibit(ExhibitBase):
                 w.deleteLater()
         self.era_badge_host.addWidget(EraBadge(era))
         self._timer.stop()
+        # the previous family's curves must not linger under the new era badge
+        for chart in (self.traj, self.temps, self.anim_chart):
+            chart.clear()
+            chart.redraw()
+        self.family_state.setText("Loading run artefacts…")
+        self.family_state.show()
         run_in_background(self._family_worker, family, glob,
                           on_done=lambda result, wanted=label: self._family_ready(result, wanted),
-                          on_fail=lambda tb: None)
+                          on_fail=lambda tb, wanted=label: self._family_failed(wanted))
+
+    def _family_failed(self, wanted: str) -> None:
+        if wanted == self.family_combo.currentText():
+            self.family_state.setText("Run artefacts failed to load for this family.")
+            self.family_state.show()
 
     @staticmethod
     def _family_worker(family: str, glob: str):
@@ -459,6 +472,11 @@ class Obj3Exhibit(ExhibitBase):
         family, series, pol_hist, refs = result
         if wanted and wanted != self.family_combo.currentText():
             return  # the combo moved on; a pre-fix payload must not sit under a post-fix badge
+        if not series:
+            self.family_state.setText("No run artefacts found for this family.")
+            self.family_state.show()
+            return
+        self.family_state.hide()
         self._pol_hist = pol_hist
         self._anim_i = 0
         palette = theme.CATEGORICAL

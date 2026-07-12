@@ -61,6 +61,31 @@ class HomeTab(QWidget, Exportable):
         pitch.setTextInteractionFlags(Qt.TextSelectableByMouse)
         lay.addWidget(pitch)
 
+        # the provenance legend: teach the colour language once, up front
+        legend = QWidget()
+        lg = QHBoxLayout(legend)
+        lg.setContentsMargins(0, 0, 0, 0)
+        lg.setSpacing(7)
+
+        def _muted(text: str) -> QLabel:
+            w = QLabel(text)
+            w.setStyleSheet(f"color: {theme.INK_SECONDARY}; font-size: 11px;")
+            return w
+
+        how = QLabel("How to read every number:")
+        how.setStyleSheet(f"color: {theme.INK_SECONDARY}; font-size: 11px; font-weight: 700;")
+        chip_live = QLabel("computed live · seed 0")
+        chip_live.setStyleSheet(f"color: {theme.LIVE_ACCENT}; font-size: 11px; font-weight: 600;")
+        chip_ledger = QLabel("ledger: experiments/gen14_evidence.md")
+        chip_ledger.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 11px;")
+        for w in (how, chip_live, _muted("= solved on this machine as you watch"),
+                  _muted("·"), chip_ledger, _muted("= quoted verbatim from the record"),
+                  _muted("·"), EraBadge("pre-fix"), EraBadge("post-fix"),
+                  _muted("results never mix across the 2026-07-09 fix")):
+            lg.addWidget(w)
+        lg.addStretch(1)
+        lay.addWidget(legend)
+
         # hero: map animation + the two ladders beside it
         hero_row = QWidget()
         hl = QHBoxLayout(hero_row)
