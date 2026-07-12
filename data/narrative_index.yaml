@@ -653,6 +653,10 @@ generations:
         quote: "the multi-city actor scores **1.90 vs random 2.43** zero-shot, on a graph it never trained on either"
       - label: "The transfer ladder"
         quote: "same-graph held-out OD 1.59 (gen15) -> held-out CITY 1.68 (this) -> single-source cross-graph ~random (A2, the honest boundary multi-city training removes)"
+      - label: "The scale axis: whole-Kyiv, eval-only (2026-07-11)"
+        quote: "a whole large city, never trained on, transfers zero-shot beating random-init at 1.88x"
+      - label: "Zero-shot K/N rows (2026-07-11)"
+        quote: "at an UNSEEN adversary budget (K=2) it tightens to 1.29x (beats random, 5/6 beat loss_det) and at an UNSEEN fleet size (N=5) it holds at 1.79x (beats random 2.10, 6/6 beat loss_det)"
     demo: live
     runs_dir: gen16_multicity
 
@@ -723,3 +727,134 @@ generations:
     demo: live
     runs_dir: gen19_b1lite1
     instance: "35-159 k8, w=3, tau=0.15"
+
+  - id: gen20
+    chapter: expansion
+    era: post-fix
+    title: "gen20: the learned interdictor works (Obj-1's antagonist agent)"
+    dates: "2026-07-11"
+    status: PASS
+    question: >-
+      Can a LEARNED interdictor replace the oracle best response as the sparring partner
+      on the post-fix interdiction game, and train a defender comparable to the
+      oracle-trained headline? One pre-registered attempt, no chase.
+    ledger: experiments/gen20_f2_learned.md
+    quotes:
+      - label: "The pass"
+        quote: "**Defender best-ckpt mean 0.330 +/- 0.018 (3 seeds); all <= 0.356 and < ALNS 0.699.** PRIMARY PASS 3/3."
+      - label: "The learned antagonist's strength"
+        quote: "**Learned antagonist strength 0.81x the oracle BR** (mean over seeds)."
+      - label: "The campaign reversal"
+        quote: "the learned adversary that could not learn to attack congestion CAN learn to interdict"
+      - label: "The discipline"
+        quote: "evaluation stayed ORACLE-BR PORTFOLIO-MAX throughout"
+    lesson: >-
+      The Act-III pivot validated retroactively: the interdiction game's sharp,
+      differentiated attack surface is learnable by an adversary where the flat
+      congestion landscape was not.
+    demo: live
+    runs_dir: gen20_f2
+    instance: "35-159 k8, N=3, K=1"
+
+  - id: gen21
+    chapter: expansion
+    era: post-fix
+    title: "gen21: the vanilla-transfer control (adversarial training is causal)"
+    dates: "2026-07-11"
+    status: CONTROL_CONFIRMS
+    question: >-
+      Does a vanilla generalist (same multi-city training, travel objective, no adversary)
+      transfer as well as the adversarial one? If not, adversarial training is measured,
+      not inferred, as the cause of zero-shot transfer.
+    ledger: experiments/gen21_vanilla_transfer.md
+    quotes:
+      - label: "The control"
+        quote: "**Vanilla (travel-objective) generalist held-out-Gdansk best-checkpoint ratio 2.338 (final 2.575).**"
+      - label: "Worse than random"
+        quote: "worse than a random-init network (2.34 vs 1.99)"
+      - label: "The mechanism"
+        quote: "A cost-trained policy concentrates its fleet on the cheapest routes, which are exactly the predictable, exploitable ones"
+      - label: "The measurement"
+        quote: >-
+          So "adversarial training is what makes transfer work" is now a MEASUREMENT
+    lesson: >-
+      Map-conditioning alone transfers below random; the adversary is what teaches the
+      hedge. The named Obj-5 non-adversarial control now exists at the transfer level.
+    demo: chart
+    runs_dir: gen21_vanilla
+
+  - id: gen22
+    chapter: expansion
+    era: post-fix
+    title: "gen22: the rotation - transfer holds to the hardest hold-out (Istanbul)"
+    dates: "2026-07-11"
+    status: PASS
+    question: >-
+      Does cross-city zero-shot transfer survive rotating the held-out city to Istanbul,
+      the structurally most distant graph, or did gen16 just pick the easy hold-out?
+    ledger: experiments/gen22_rotation.md
+    quotes:
+      - label: "The pass"
+        quote: "**Held-out-Istanbul best-checkpoint mean 1.880 +/- 0.116 (3 seeds); random-init reference 2.30.**"
+      - label: "Two rotation points"
+        quote: "two rotation points now: Gdansk 1.68, Istanbul 1.88"
+      - label: "The honest clause"
+        quote: "The loss_det clause is mixed (4/6, 2/6, 3/6: Istanbul's mega-city grid has several thin-asymmetry ODs where loss_det/eq is only ~1.3-2.0, the whole-project thin-headroom pattern)"
+    lesson: >-
+      The cross-city claim is now "transfers to whichever city is held out", not
+      "transfers to the one easy city we picked".
+    demo: live
+    runs_dir: gen22_rotation
+
+  - id: gen23
+    chapter: expansion
+    era: post-fix
+    title: "gen23: ERB from a metaheuristic hurts (Obj-3 closed with a mechanism)"
+    dates: "2026-07-11"
+    status: NEGATIVE
+    question: >-
+      Does seeding the replay buffer with ALNS-population demonstrations accelerate the
+      fleet-route defender's convergence on the interdiction headline (Obj-3 verbatim)?
+    ledger: experiments/gen23_c1_erb.md
+    quotes:
+      - label: "The result"
+        quote: "**The seeding HURTS: cold reaches competence in ~100-500 sorties and lands at 0.285 (near the headline 0.256); seeded NEVER reaches the 0.35 bar and plateaus at 0.443.**"
+      - label: "The verbatim closure"
+        quote: "ERB bootstrapping via a population-based metaheuristic does NOT accelerate convergence on the interdiction headline - it DEGRADES it"
+      - label: "The mechanism"
+        quote: "seeding a MIXED-STRATEGY learner (whose optimum is randomise-your-stack) with deterministic expert demonstrations biases it toward exploitable determinism, away from the equilibrium randomisation"
+      - label: "The contrast that proves the rule"
+        quote: "demonstration bootstrapping helps only when the demonstrated behaviour matches the target solution concept"
+    lesson: >-
+      The very determinism that makes ALNS a good deterministic planner makes its
+      demonstrations counterproductive for a game whose solution is a mixed strategy.
+      A genuine mechanistic finding, not just a null.
+    demo: chart
+    runs_dir: gen23_c1
+    instance: "35-159 k8, N=3, K=1"
+
+  - id: d3g
+    chapter: expansion
+    era: post-fix
+    title: "D3-on-Gdansk: the composite on unseen ground (poster exhibit)"
+    dates: "2026-07-11"
+    status: DONE
+    question: >-
+      Do the three pillars (ZST pricing, SBO search, the interdiction objective) compose
+      on a city the policy never trained on?
+    ledger: experiments/d3_gdansk.md
+    quotes:
+      - label: "The surrogate on unseen ground"
+        quote: "**Surrogate over the TRAINED generalist's exploitability, on the never-trained city: held-out Spearman 0.862.**"
+      - label: "The loop"
+        quote: "**SBO acquisition: median 32.5 evaluations to regret <= 0.01 vs random INF; median final regret 0.0000 vs random 0.0107.**"
+      - label: "The poster payload"
+        quote: "**policy-vs-oracle design-target rank correlation: 0.109** (vs 0.768 for the in-distribution D3)."
+      - label: "Why only this framework can price it"
+        quote: "the LP would re-solve the equilibrium and hand you a design that is near-irrelevant to how the zero-shot policy actually performs there"
+    lesson: >-
+      The deployed policy's operational landscape diverges from the equilibrium precisely
+      where it matters most, an unseen theatre; designing there requires the RL + surrogate
+      loop, not the LP abstraction.
+    demo: text
+    artefact: models/runs/d3_gdansk.json

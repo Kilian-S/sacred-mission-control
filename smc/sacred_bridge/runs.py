@@ -30,6 +30,10 @@ GENERALIST_HISTORY_FIELDS = (
     "alpha_leader", "alpha_foll",
 )
 B1LITE_HISTORY_FIELDS = ("sortie", "eval_loss", "_pad")
+F2_HISTORY_FIELDS = (  # scripts/train_f2.py (gen20): defender expl is ALWAYS oracle-BR
+    "sortie", "defender_expl_oracle", "learned_antag_exploit", "alpha_defender", "alpha_antag",
+)
+C1_HISTORY_FIELDS = ("sortie", "tap")  # scripts/train_c1.py (gen23), per {seeded, cold} arm
 
 
 @dataclass

@@ -30,8 +30,10 @@ divides everything into pre-fix (gen01-gen09 + the banked B2-P3/gen09 numbers) a
 |---|---|---|
 | `scripts/train_multiconvoy.py` | gen09, gen10 (mc/mc2/van), gen11, gen12, gen13, gen14 (mc/van), gen17, gen18 | 11-tuple `(sortie, expl, expl_tap, alpha_leader, alpha_foll, stack_rate, follow_rate, H_lead, H_foll, t_train_s, t_eval_s)` |
 | `scripts/train_interdiction.py` | gen08_interdiction_I3 (all), gen10 B2P3, gen14 sc, zst_step0 source_retrain | 7-tuple `(sortie, expl_policy, expl_tap, expl_window, expl_avg, alpha, policy_entropy)` inside `arms.{vanilla,sacred}` |
-| `scripts/train_generalist.py` | gen15, gen16 | 7-tuple `(sortie, train_ratio, test_ratio, test_ratios_list, route_feat_w, alpha_leader, alpha_foll)` |
+| `scripts/train_generalist.py` | gen15, gen16, gen21 (`--vanilla` control), gen22 (Istanbul held out) | 7-tuple `(sortie, train_ratio, test_ratio, test_ratios_list, route_feat_w, alpha_leader, alpha_foll)` |
 | `scripts/train_b1lite1.py` | gen19 | 3-tuple `(sortie_k, sacred_eval_loss, 0.0)` + `refs{v_eq,eq,iid_eq,static_det,history_opt}` |
+| `scripts/train_f2.py` | gen20_f2 (learned interdictor co-evolution) | 5-tuple `(sortie, defender_expl_oracle, learned_antag_exploit, alpha_defender, alpha_antag)` + `best_defender_expl/best_at/alns/eq/antag_strength_ratio` |
+| `scripts/train_c1.py` | gen23_c1 (`{seeded,cold}_seed*.json`) | 2-tuple `(sortie, tap)` + `erb/competence_at/best_tap/bar/eq` |
 
 Multi-convoy result dicts also carry `pol_hist` (per-eval occupancy distributions, len = #evals+1,
 each len = #occupancies e.g. 364), `best_tap`/`best_tap_sortie`, `occ_dist`, `tail_*`.
@@ -53,6 +55,10 @@ Interdiction JSONs carry `frontier` (list of `[cost, value]` points), `route_cos
 | gen17_lastiterate seed{0,1,2} | 24 each | post-fix | drift charts |
 | gen19_b1lite1 seed{0,1,2} | 16 each (ep520..8000) | post-fix | LIVE roster (history-aware policy) |
 | gen18_learnedfollower | NONE | post-fix | charts from JSON only |
+| gen20_f2 seed{0,1,2} | 15 each (`defender_ep*.pt`, NOT actor_ep) | post-fix | LIVE roster (single best ckpt; exact estimator, no TAP) |
+| gen21_vanilla seed0 | 24 | post-fix | LIVE roster (the travel-objective transfer CONTROL) |
+| gen22_rotation seed{0,1,2} | 24 each | post-fix | LIVE roster (generalist, Istanbul held out) |
+| gen23_c1 | NONE (JSONs only) | post-fix | charts (ERB seeded vs cold) |
 | gen08_interdiction_I3 | NONE | pre-fix | charts from JSON only |
 | zst_step0 `source_actor_3371.pt` | 1 (atypical name) | post-fix | chart/text |
 | br_gate (campaign era) | `role/actor.pt` + snapshots | campaign | not loaded (11/13-dim era) |
@@ -68,10 +74,12 @@ to auto-detect widths, slice features with `_clip_x`/`_clip_ea`, index nodes wit
 ### Top-level JSONs
 
 `d1_sbo_loop.json` (SBO acquisition curves, 20 repeats), `d2_hardening.json`,
-`d3_composite.json` (522 designs, surrogate curves), `a3_amortisation.json`,
-`correlated_interception.json` (B4 rho curves), `fleet_cost_probe.json`,
-`sbo_placement_demo.json` (F3: 450 designs with rows), `zst_step0.json`,
-`a2_graph_transfer_original.json`; `experiments/gen04_gate.json`.
+`d3_composite.json` (522 designs, surrogate curves), `d3_gdansk.json` (the composite on the
+never-trained city), `a3_amortisation.json`, `correlated_interception.json` (B4 rho curves),
+`fleet_cost_probe.json`, `sbo_placement_demo.json` (F3: 450 designs with rows),
+`zst_step0.json`, `zst_kn_rows.json` (K/N shifted-regime rows), `a2_graph_transfer_original.json`,
+`a2_graph_transfer_kyiv.json` (the 5 screened whole-Kyiv ODs with per-OD eq/loss_det refs);
+`experiments/gen04_gate.json`.
 
 ## 3. Maps (`SACRED/data/maps/`)
 
@@ -86,7 +94,7 @@ edges = LineStrings with `u`, `v`, `length` (metres):
 | istanbul | 1266 | 2222 | gen16 train |
 | kaliningrad_original | 624 | 1273 | A2 held-out graph; NO `length` property (loader default 100 m) |
 | kaliningrad_original_curvy | 624 | 1273 | display geometry variant |
-| kyiv | 6083 | 10861 | on disk, NOT in CITY_PATHS; not oracle-screened; map-view only |
+| kyiv | 6083 | 10861 | NOT in CITY_PATHS, but the whole-city zero-shot row is banked (gen16 scale-axis, 5 screened ODs in `a2_graph_transfer_kyiv.json`); live LP ~0.6 s, so Playground presets exist |
 
 `koenigsberg1.json` = 1000 synthetic delivery tasks (demand seeds), not a graph.
 Loader: `src/utils/graph_utils.load_osm_graph_and_demands(nodes, edges, tasks) -> (nodes_dict,
@@ -149,3 +157,8 @@ NEXT_STEPS_11-07-26.md, ROADMAP.md, SYSTEM.md. Git history of sacred = ready-mad
 | gen01-07 campaign | text + tfevents charts + existing figures |
 | Kyiv | map display only, labelled unscreened |
 | gen09/gen10/gen11/gen12/gen17 checkpoint drift | charts from JSONs (pol_hist/history) |
+| gen20 co-evolved defender (35-159) | LIVE (single best defender_ep ckpt; reproduces the banked 0.355 exactly) |
+| gen21 vanilla generalist (the transfer control) | LIVE roster + charts |
+| gen22 rotation generalist (Istanbul held out) | LIVE (ZST demos on Istanbul presets) |
+| gen23 ERB seeded-vs-cold | charts (Obj-3 exhibit + History) |
+| Kyiv | LIVE (5 screened OD presets; oracle solves ~0.6 s; gen16/gen15 generalists loadable) |

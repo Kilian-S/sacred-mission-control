@@ -40,7 +40,8 @@ def test_generalist_history_shape():
 
 
 def test_gen_chart_payloads():
-    for gid in ("gen09", "gen13", "gen14", "gen15", "gen16", "gen19", "zst0", "gen08"):
+    for gid in ("gen09", "gen13", "gen14", "gen15", "gen16", "gen19", "zst0", "gen08",
+                "gen20", "gen21", "gen22", "gen23"):
         payload = gen_charts.load_gen_chart(gid)
         assert ("series" in payload) or ("error" in payload)
         if "series" in payload:

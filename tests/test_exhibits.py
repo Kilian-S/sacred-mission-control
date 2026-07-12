@@ -61,6 +61,16 @@ def test_gen19_ladder(data):
         assert _value_in_quote(row["value"], g["quote"]), row
 
 
+def test_quote_cards(data):
+    """Every Objectives quote card is verbatim in the ledger it cites."""
+    for exhibit, cards in data.get("quote_cards", {}).items():
+        for card in cards:
+            default = card["ledger"]
+            for item in card["items"]:
+                ledger = SACRED_ROOT / item.get("ledger", default)
+                assert verify_quote(item["quote"], ledger), (exhibit, item["label"])
+
+
 def test_objectives_verbatim(data):
     src = SACRED_ROOT / data["objectives_verbatim"]["source"]
     for item in data["objectives_verbatim"]["items"]:

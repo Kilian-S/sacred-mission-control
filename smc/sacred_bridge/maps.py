@@ -36,7 +36,7 @@ CITY_LABELS = {
     "gdansk": "Gdansk (gen16 held-out city, 356 nodes)",
     "east_london": "East London (564 nodes)",
     "istanbul": "Istanbul (1266 nodes)",
-    "kyiv": "Kyiv (6083 nodes; not oracle-screened, no banked results)",
+    "kyiv": "Kyiv (6083 nodes; whole-city zero-shot row banked in gen16)",
     "kaliningrad_original": "Kaliningrad original (A2 held-out graph, 624 nodes)",
 }
 

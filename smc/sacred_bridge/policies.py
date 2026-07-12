@@ -103,6 +103,18 @@ def _best_ckpt_of_generalist(family: str, stem: str) -> tuple[Path, int, tuple[P
     return (p, ep, _tap_window(family, stem, ep, stride=500, tap_k=3))
 
 
+def _best_ckpt_of_f2(stem: str) -> tuple[Path, int] | None:
+    """gen20's defender checkpoints are named defender_ep{N}.pt and the banked
+    estimator is the exact per-eval exploitability (no TAP window): the
+    deployable object is the single best checkpoint."""
+    rf = read_json(RUNS_DIR / "gen20_f2" / f"{stem}.json")
+    if not rf.ok or rf.data.get("best_at") is None:
+        return None
+    ep = int(rf.data["best_at"])
+    p = RUNS_DIR / "gen20_f2" / f"{stem}_ckpts" / f"defender_ep{ep}.pt"
+    return (p, ep) if p.is_file() else None
+
+
 def _best_ckpt_of_b1lite(stem: str) -> tuple[Path, int] | None:
     rf = read_json(RUNS_DIR / "gen19_b1lite1" / f"{stem}.json")
     if not rf.ok or not rf.data.get("history"):
@@ -165,6 +177,30 @@ def discover_actors() -> list[ActorRef]:
                 f"History-aware gen19 seed {seed} (pattern-of-life defender)",
                 hit[0], "history_aware",
                 f"gen19_b1lite1.md best checkpoint @ sortie {hit[1]}"))
+    for seed in range(3):
+        hit = _best_ckpt_of_f2(f"seed{seed}")
+        if hit:
+            out.append(ActorRef(
+                f"gen20_seed{seed}", "gen20_f2",
+                f"SACRED gen20 seed {seed} (co-evolved vs the LEARNED interdictor)",
+                hit[0], "specialist",
+                f"gen20_f2_learned.md best checkpoint @ sortie {hit[1]}"))
+        hit = _best_ckpt_of_generalist("gen22_rotation", f"seed{seed}")
+        if hit:
+            out.append(ActorRef(
+                f"gen22_seed{seed}", "gen22_rotation",
+                f"Multi-city generalist gen22 seed {seed} (Istanbul held out)",
+                hit[0], "generalist",
+                f"gen22_rotation.md best-TAP ensemble @ sortie {hit[1]}",
+                ensemble=hit[2]))
+    hit = _best_ckpt_of_generalist("gen21_vanilla", "seed0")
+    if hit:
+        out.append(ActorRef(
+            "gen21_seed0", "gen21_vanilla",
+            "Vanilla generalist gen21 (travel objective; the transfer CONTROL)",
+            hit[0], "generalist",
+            f"gen21_vanilla_transfer.md best-TAP ensemble @ sortie {hit[1]}",
+            ensemble=hit[2]))
     return out
 
 

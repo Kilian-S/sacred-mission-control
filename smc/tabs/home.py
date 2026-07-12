@@ -122,10 +122,17 @@ class HomeTab(QWidget, Exportable):
         # entry buttons (short subtitles so Home never forces horizontal scroll)
         grid = QGridLayout()
         grid.setSpacing(10)
+        try:
+            idx = yaml.safe_load((DATA_DIR / "narrative_index.yaml").read_text())
+            n_gens = sum(1 for g in idx.get("generations", [])
+                         if str(g.get("id", "")).startswith("gen"))
+            history_sub = f"{n_gens} generations, 3 pivots"
+        except Exception:
+            history_sub = "The generations, 3 pivots"
         entries = [
             ("Playground", "Fly sorties, duel, ambush", 1),
             ("Objectives", "Six exhibits, live", 2),
-            ("History", "19 generations, 3 pivots", 3),
+            ("History", history_sub, 3),
             ("Documents", "Ledgers, searchable", 4),
         ]
         for col, (name, desc, idx) in enumerate(entries):

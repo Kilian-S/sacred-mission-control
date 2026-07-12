@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 )
 
 from .. import theme
+from ..sacred_bridge import gen_charts
 from ..sacred_bridge import maps as maps_bridge
 from ..sacred_bridge import oracle as oracle_bridge
 from ..sacred_bridge import policies
@@ -92,6 +93,30 @@ class ExhibitBase(QWidget):
         self.lay.addWidget(c)
         return c
 
+    def add_quote_cards(self, key: str) -> None:
+        """Render this exhibit's provenance-tested ledger quote cards
+        (data/exhibits.yaml `quote_cards`, verbatim-enforced by tests)."""
+        for spec in _exhibit_data().get("quote_cards", {}).get(key, []):
+            c = self.card(spec["title"])
+            for item in spec["items"]:
+                lab = QLabel(item["label"])
+                lab.setStyleSheet(
+                    f"color: {theme.INK_SECONDARY}; font-size: 11px; font-weight: 700;"
+                    "text-transform: uppercase; letter-spacing: 0.04em;")
+                body = QLabel(item["quote"])
+                body.setTextFormat(Qt.MarkdownText)
+                body.setWordWrap(True)
+                body.setTextInteractionFlags(Qt.TextSelectableByMouse)
+                body.setStyleSheet(
+                    f"font-size: 13px; color: {theme.INK}; background: {theme.PAGE};"
+                    f"border-left: 3px solid {theme.BASELINE}; border-radius: 4px;"
+                    "padding: 8px 10px;")
+                src = QLabel("ledger: " + item.get("ledger", spec["ledger"]))
+                src.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 10px;")
+                c.layout_().addWidget(lab)
+                c.layout_().addWidget(body)
+                c.layout_().addWidget(src)
+
 
 # ===================================================================== Obj 1
 
@@ -136,6 +161,7 @@ class Obj1Exhibit(ExhibitBase):
         note.setWordWrap(True)
         c2.layout_().addWidget(note)
 
+        self.add_quote_cards("obj1")
         run_in_background(
             oracle_bridge.build_instance, "kaliningrad", "33", "71", 1, 1, 8, None,
             on_done=self._ready, on_fail=lambda tb: self.readout.setText("Solve failed."))
@@ -334,12 +360,54 @@ class Obj3Exhibit(ExhibitBase):
         self.anim_chart = ChartWidget(title="obj3-fp-animation", height=2.8, width=7.4)
         anim_card.layout_().addWidget(self.anim_chart)
 
+        erb_card = self.card("ERB bootstrapping, measured (gen23: seeded vs cold)")
+        self.erb_state = StateLabel("Loading the gen23 run artefacts…", "loading")
+        erb_card.layout_().addWidget(self.erb_state)
+        self.erb_chart = ChartWidget(title="obj3-erb-gen23", height=2.8, width=7.4)
+        erb_card.layout_().addWidget(self.erb_chart)
+        self.add_quote_cards("obj3")
+        run_in_background(gen_charts.load_gen_chart, "gen23",
+                          on_done=self._erb_ready,
+                          on_fail=lambda tb: self.erb_state.setText("gen23 artefacts failed to load."))
+
         self._pol_hist = None
         self._anim_i = 0
         self._timer = QTimer(self)
         self._timer.setInterval(600)
         self._timer.timeout.connect(self._anim_tick)
         self._load_family()
+
+    def _erb_ready(self, payload: dict) -> None:
+        if "error" in payload:
+            self.erb_state.setText(f"Not available: {payload['error']}")
+            return
+        self.erb_state.hide()
+        ax = self.erb_chart.clear()
+        for s in payload["series"]:
+            seeded = s.get("arm") == "seeded"
+            colour = theme.STRATEGY_COLOURS["vanilla"] if seeded else theme.STRATEGY_COLOURS["sacred"]
+            ax.plot(s["x"], s["y"], color=colour, linewidth=1.6, alpha=0.8,
+                    label=s["label"] if s["label"].endswith("seed 0") else None)
+        refs = payload.get("refs", {})
+        if "competence bar" in refs:
+            ax.axhline(refs["competence bar"], color=theme.INK_MUTED, linestyle="--", linewidth=1.1)
+            ax.annotate(f"competence bar {refs['competence bar']:.2f}",
+                        xy=(1.0, refs["competence bar"]), xycoords=("axes fraction", "data"),
+                        fontsize=8, ha="right", va="bottom", color=theme.INK_MUTED)
+        if "equilibrium" in refs:
+            ax.axhline(refs["equilibrium"], color=theme.STRATEGY_COLOURS["equilibrium"],
+                       linestyle=":", linewidth=1.0)
+            ax.annotate(f"equilibrium {refs['equilibrium']:.3f}", xy=(0.0, refs["equilibrium"]),
+                        xycoords=("axes fraction", "data"), fontsize=8, va="bottom",
+                        color=theme.STRATEGY_COLOURS["equilibrium"])
+        ax.set_xlabel("sortie")
+        ax.set_ylabel("exploitability (TAP)")
+        ax.legend(fontsize=8.5)
+        self.erb_chart.set_caption(
+            "yellow = ERB-seeded (ALNS demonstrations), blue = cold: the cold arms dive under "
+            "the bar, the seeded arms never do · source: models/runs/gen23_c1 "
+            "(gen23_c1_erb.md)", "ledger")
+        self.erb_chart.redraw()
 
     def _load_family(self) -> None:
         label = self.family_combo.currentText()
@@ -507,6 +575,7 @@ class Obj4Exhibit(ExhibitBase):
         d3_src = QLabel("ledger: experiments/d3_composite.md · artefact: models/runs/d3_composite.json")
         d3_src.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 10px;")
         c3.layout_().addWidget(d3_src)
+        self.add_quote_cards("obj4")
 
         run_in_background(self._load_worker, on_done=self._loaded,
                           on_fail=lambda tb: self.design_label.setText("artefacts unavailable"))
@@ -856,18 +925,20 @@ class ZstExhibit(ExhibitBase):
         c.layout_().addWidget(self.result_label)
 
         c2 = self.card("The transfer-difficulty ladder")
-        self.ladder_chart = ChartWidget(title="zst-transfer-ladder", height=2.6, width=7.2)
+        self.ladder_chart = ChartWidget(title="zst-transfer-ladder", height=3.0, width=7.2)
         c2.layout_().addWidget(self.ladder_chart)
         self._draw_ladder()
+        self.add_quote_cards("zst")
 
     def _draw_ladder(self) -> None:
         rungs = _exhibit_data()["transfer_ladder"]["rungs"]
         ax = self.ladder_chart.clear()
         labels = [r["label"] for r in rungs]
         vals = [r["value"] for r in rungs]
-        cols = [theme.BLUE, theme.BLUE, theme.STRATEGY_COLOURS["random_init"]]
-        ax.barh(range(len(rungs)), vals, color=cols[:len(rungs)], height=0.6)
-        ax.set_yticks(range(len(rungs)), labels)
+        cols = [theme.STRATEGY_COLOURS["random_init"] if r.get("kind") == "boundary"
+                else theme.BLUE for r in rungs]
+        ax.barh(range(len(rungs)), vals, color=cols, height=0.6)
+        ax.set_yticks(range(len(rungs)), labels, fontsize=8)
         ax.invert_yaxis()
         ax.axvline(1.0, color=theme.STRATEGY_COLOURS["equilibrium"], linestyle=":", linewidth=1.0)
         for i, v in enumerate(vals):
@@ -875,9 +946,9 @@ class ZstExhibit(ExhibitBase):
                     color=theme.INK_SECONDARY)
         ax.set_xlabel("mean ratio to each instance's own equilibrium (1.0 = optimal)")
         self.ladder_chart.set_caption(
-            "gen15_generalist.md · gen16_multicity.md · a2_graph_transfer.md "
-            "(multi-graph training is what removes the A2 boundary: gen16's A2-rescue row "
-            "scores 1.90 vs random 2.43 on the A2 graph)", "ledger")
+            "gen15_generalist.md · gen16_multicity.md · gen22_rotation.md · "
+            "a2_graph_transfer.md (multi-graph training is what removes the A2 boundary: "
+            "gen16's A2-rescue row scores 1.90 vs random 2.43 on the A2 graph)", "ledger")
         self.ladder_chart.redraw()
 
     def _evaluate(self) -> None:
@@ -952,29 +1023,34 @@ class ObjectivesTab(QWidget, Exportable):
         self._exhibits = [
             ("Obj 1 · The zero-sum game", Obj1Exhibit(
                 quotes["obj1"],
-                "Met more deeply than promised: formulated, characterised (when it fails), and "
-                "solved against its own computable equilibrium.")),
+                "Met more deeply than promised: formulated, characterised (when it fails), "
+                "solved against its own computable equilibrium, and closed with a LEARNED "
+                "antagonist agent (gen20: 0.81x oracle strength).")),
             ("Obj 2 · The simulation environment", Obj2Exhibit(
                 quotes["obj2"],
                 "Met and strengthened: the multi-city extraction pipeline, the interdiction game "
                 "layer, and this application are all Obj-2 artefacts.")),
             ("Obj 3 · SAC + ATLA + ERB", Obj3Exhibit(
                 quotes["obj3"],
-                "Substantially met: SAC entropy IS the mixed strategy; ATLA realised as smooth "
-                "fictitious play vs the oracle best response; ERB realised as demonstration "
-                "bootstrapping (declared re-interpretations).")),
+                "Met and closed verbatim: SAC entropy IS the mixed strategy; ATLA realised as "
+                "smooth fictitious play vs the oracle best response; and gen23 measured ERB "
+                "bootstrapping from the ALNS population (it hurts: deterministic demonstrations "
+                "fight the mixed-strategy optimum).")),
             ("Obj 4 · Surrogate-based optimisation", Obj4Exhibit(
                 quotes["obj4"],
                 "Met, now arguably the most complete objective: F3 regression, D1 acquisition "
-                "loop, D2 hardening tier, D3 composite over the trained policy.")),
+                "loop, D2 hardening tier, D3 composite over the trained policy, and D3-on-Gdansk "
+                "(the composite holds on a never-trained city).")),
             ("Obj 5 · Evaluation vs baselines", Obj5Exhibit(
                 quotes["obj5"],
                 "Met strongly: both headline ladders on corrected code with n=10 CIs; disruption "
-                "curves in 10/10 cells; fairness rows pre-empting the natural attacks.")),
+                "curves in 10/10 cells; fairness rows pre-empting the natural attacks; and the "
+                "transfer-level vanilla control (gen21) making the adversarial claim causal.")),
             ("ZST · The aim's promise", ZstExhibit(
                 quotes["zst"],
-                "Realised at the held-out-CITY level (gen16), with the honest boundary (A2) "
-                "measured and then removed by multi-graph training.")),
+                "Realised at the held-out-CITY level (gen16), rotated to the hardest hold-out "
+                "(Istanbul, gen22), extended to whole-city Kyiv scale, with the honest boundary "
+                "(A2) measured and then removed by multi-graph training.")),
         ]
         for label, widget in self._exhibits:
             item = QListWidgetItem(label)

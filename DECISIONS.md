@@ -35,3 +35,18 @@ Recorded per §1 of MISSION_CONTROL_BRIEF.md. One entry per decision, dated.
    colour-blind-safe accents on warm greys); `QApplication` style "Fusion" so macOS dark
    mode cannot invert it.
 10. **British English** throughout UI copy and docs (Kilian's global style rules; no em-dashes).
+
+## 2026-07-12
+
+11. **gen20-23 folded in** (the sacred agent banked them after handover). gen20's deployable
+    object is the SINGLE best checkpoint (`defender_ep{N}.pt`, exact per-eval estimator, no TAP
+    window), so its roster entry has no ensemble; verified to reproduce the banked 0.355 exactly.
+    gen21 joins the roster explicitly labelled as the travel-objective transfer CONTROL, never
+    as a SACRED arm. gen23 has no checkpoints; it is chart material (Obj-3 + History).
+12. **Kyiv is now a live Playground city**: the whole-city zero-shot row is banked (gen16
+    scale-axis), the five screened ODs come from `a2_graph_transfer_kyiv.json`, and a measured
+    live solve takes ~0.6 s (the oracle is route-bound, not graph-bound). The old "no banked
+    results" label was stale and is gone.
+13. **Exhibit ledger quotes live in `data/exhibits.yaml` `quote_cards`**, rendered by
+    `ExhibitBase.add_quote_cards`, so new-generation updates to the Objectives tab are data
+    edits under the same verbatim-provenance test as everything else, not code edits.

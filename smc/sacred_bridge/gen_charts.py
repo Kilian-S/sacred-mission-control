@@ -9,6 +9,8 @@ from typing import Any
 from . import runs
 from .runs import (
     B1LITE_HISTORY_FIELDS,
+    C1_HISTORY_FIELDS,
+    F2_HISTORY_FIELDS,
     GENERALIST_HISTORY_FIELDS,
     INTERDICTION_HISTORY_FIELDS,
     MULTICONVOY_HISTORY_FIELDS,
@@ -44,6 +46,18 @@ _FAMILY_SPECS: dict[str, dict[str, Any]] = {
               "note": "learned followers: exploitability of the partially-coordinated fleet"},
     "gen19": {"family": "gen19_b1lite1", "glob": "seed*.json", "kind": "b1lite",
               "note": "per-sortie mission-failure vs the pattern-of-life adversary"},
+    "gen20": {"family": "gen20_f2", "glob": "seed*.json", "kind": "f2",
+              "note": "solid = defender exploitability under the ORACLE BR; dashed = the learned "
+                      "antagonist's own exploitation (it reaches 0.81x the oracle)"},
+    "gen21": {"family": "gen21_vanilla", "glob": "seed*.json", "kind": "generalist",
+              "note": "the vanilla (travel-objective) generalist: held-out Gdansk ratio (solid) "
+                      "never approaches the adversarial 1.68; the transfer control"},
+    "gen22": {"family": "gen22_rotation", "glob": "seed*.json", "kind": "generalist",
+              "note": "held-out ISTANBUL ratio (solid) vs train ratio (dashed): transfer holds "
+                      "to the hardest hold-out city"},
+    "gen23": {"family": "gen23_c1", "glob": "*_seed*.json", "kind": "c1",
+              "note": "ERB-seeded (ALNS demonstrations) vs cold arms: the seeding HURTS; "
+                      "deterministic demos bias a mixed-strategy learner"},
 }
 
 
@@ -122,6 +136,37 @@ def load_gen_chart(gen_id: str) -> dict[str, Any]:
                 "y2": hs.col("train_ratio"),
                 "best": data.get("best_test_ratio"),
             })
+
+        elif kind == "f2":
+            hs = HistorySeries.from_rows(data["history"], F2_HISTORY_FIELDS)
+            series.append({
+                "label": label,
+                "x": hs.col("sortie"),
+                "y": hs.col("defender_expl_oracle"),
+                "y2": hs.col("learned_antag_exploit"),
+                "best": data.get("best_defender_expl"),
+                "best_at": data.get("best_at"),
+            })
+            for name, key in (("equilibrium", "eq"), ("alns", "alns"),
+                              ("gen14 headline", "oracle_trained_ref")):
+                v = data.get(key)
+                if isinstance(v, (int, float)):
+                    refs.setdefault(name, v)
+
+        elif kind == "c1":
+            hs = HistorySeries.from_rows(data["history"], C1_HISTORY_FIELDS)
+            arm = "seeded" if data.get("erb") else "cold"
+            series.append({
+                "label": f"{arm} seed {data.get('seed', '?')}",
+                "x": hs.col("sortie"),
+                "y": hs.col("tap"),
+                "best": data.get("best_tap"),
+                "arm": arm,
+            })
+            if isinstance(data.get("eq"), (int, float)):
+                refs.setdefault("equilibrium", data["eq"])
+            if isinstance(data.get("bar"), (int, float)):
+                refs.setdefault("competence bar", data["bar"])
 
         elif kind == "b1lite":
             hs = HistorySeries.from_rows(data["history"], B1LITE_HISTORY_FIELDS)

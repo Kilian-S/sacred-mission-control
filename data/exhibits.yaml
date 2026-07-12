@@ -134,8 +134,17 @@ transfer_ladder:
       value: 1.68
       ledger: experiments/gen16_multicity.md
       quote: "**Held-out-CITY (Gdansk) best-checkpoint mean ratio 1.677 +/- 0.072 (3 seeds).**"
+    - label: "Held-out CITY, Istanbul: the hardest rotation (gen22)"
+      value: 1.88
+      ledger: experiments/gen22_rotation.md
+      quote: "**Held-out-Istanbul best-checkpoint mean 1.880 +/- 0.116 (3 seeds); random-init reference 2.30.**"
+    - label: "Whole-city Kyiv, 6083 nodes, single-ckpt (gen16 scale axis)"
+      value: 1.88
+      ledger: experiments/gen16_multicity.md
+      quote: "a whole large city, never trained on, transfers zero-shot beating random-init at 1.88x"
     - label: "Single-source, different graph (A2): ties random"
       value: 2.40
+      kind: boundary
       ledger: experiments/a2_graph_transfer.md
       quote: "**The generalist TIES a random-init network (2.40 vs 2.41) and beats no held-out OD.**"
 
@@ -152,6 +161,49 @@ gen19_ladder:
       value: 0.050
     - label: "Dynamic optimum (history_opt)"
       value: 0.049
+
+# Quote cards rendered inside the Objectives exhibits (same provenance bar:
+# every quote verbatim in the cited ledger, enforced by tests/test_exhibits.py).
+quote_cards:
+  obj1:
+    - title: "Closed with a learned agent: gen20 (2026-07-11)"
+      ledger: experiments/gen20_f2_learned.md
+      items:
+        - label: "The pass"
+          quote: "**Defender best-ckpt mean 0.330 +/- 0.018 (3 seeds); all <= 0.356 and < ALNS 0.699.** PRIMARY PASS 3/3."
+        - label: "The learned antagonist's strength"
+          quote: "**Learned antagonist strength 0.81x the oracle BR** (mean over seeds)."
+        - label: "The campaign reversal"
+          quote: "the learned adversary that could not learn to attack congestion CAN learn to interdict"
+  obj3:
+    - title: "ERB closed verbatim: gen23 (2026-07-11)"
+      ledger: experiments/gen23_c1_erb.md
+      items:
+        - label: "The result"
+          quote: "**The seeding HURTS: cold reaches competence in ~100-500 sorties and lands at 0.285 (near the headline 0.256); seeded NEVER reaches the 0.35 bar and plateaus at 0.443.**"
+        - label: "The mechanism"
+          quote: "seeding a MIXED-STRATEGY learner (whose optimum is randomise-your-stack) with deterministic expert demonstrations biases it toward exploitable determinism, away from the equilibrium randomisation"
+  obj4:
+    - title: "The composite on unseen ground: D3-on-Gdansk (2026-07-11)"
+      ledger: experiments/d3_gdansk.md
+      items:
+        - label: "The surrogate on unseen ground"
+          quote: "**Surrogate over the TRAINED generalist's exploitability, on the never-trained city: held-out Spearman 0.862.**"
+        - label: "The poster payload"
+          quote: "**policy-vs-oracle design-target rank correlation: 0.109** (vs 0.768 for the in-distribution D3)."
+        - label: "Why only this framework can price it"
+          quote: "the LP would re-solve the equilibrium and hand you a design that is near-irrelevant to how the zero-shot policy actually performs there"
+  zst:
+    - title: "The causal control and the shifted regimes (2026-07-11)"
+      ledger: experiments/gen21_vanilla_transfer.md
+      items:
+        - label: "The vanilla control (gen21)"
+          quote: "**Vanilla (travel-objective) generalist held-out-Gdansk best-checkpoint ratio 2.338 (final 2.575).**"
+        - label: "Worse than random: adversarial training is causal"
+          quote: "worse than a random-init network (2.34 vs 1.99)"
+        - label: "Zero-shot K/N rows (gen16)"
+          ledger: experiments/gen16_multicity.md
+          quote: "at an UNSEEN adversary budget (K=2) it tightens to 1.29x (beats random, 5/6 beat loss_det) and at an UNSEEN fleet size (N=5) it holds at 1.79x (beats random 2.10, 6/6 beat loss_det)"
 
 objectives_verbatim:
   source: THESIS_STORYLINE.md

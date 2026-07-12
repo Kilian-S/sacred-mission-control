@@ -321,6 +321,9 @@ class HistoryTab(QWidget, Exportable):
             for i, s in enumerate(series):
                 if kind == "interdiction":
                     colour = theme.STRATEGY_COLOURS["sacred"] if s.get("arm") == "sacred" else theme.STRATEGY_COLOURS["vanilla"]
+                elif kind == "c1":
+                    # cold = the hero blue; ERB-seeded = the control yellow (it hurts)
+                    colour = theme.STRATEGY_COLOURS["vanilla"] if s.get("arm") == "seeded" else theme.STRATEGY_COLOURS["sacred"]
                 elif kind == "multiconvoy_arms":
                     arm = s.get("arm", "")
                     colour = arm_colours.setdefault(arm, palette[len(arm_colours) % len(palette)])
@@ -353,6 +356,8 @@ class HistoryTab(QWidget, Exportable):
                 ax.set_ylabel("held-out ratio to equilibrium")
             elif kind == "b1lite":
                 ax.set_ylabel("per-sortie mission failure")
+            elif kind == "f2":
+                ax.set_ylabel("exploitability (oracle BR)")
             else:
                 ax.set_ylabel("exploitability (TAP)")
             if len(series) <= 8:

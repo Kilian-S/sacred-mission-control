@@ -147,6 +147,41 @@ presets:
       k_extra: 8
       N: 3
       K: 1
+  kyiv:
+    - od: "165-41"
+      label: "165-41 · Kyiv whole-city zero-shot OD"
+      k_extra: 8
+      N: 3
+      K: 1
+      note: "The 6083-node Kyiv arterial network, ~17x the training graph; five screened held-out ODs, banked eval-only in gen16's scale-axis extension."
+      banked:
+        - cell: "N=3 K=1"
+          era: post-fix
+          ledger: experiments/gen16_multicity.md
+          items:
+            - label: "the whole-Kyiv row (gen16 seed-0 actor, eval-only)"
+              value: 1.88
+              quote: "**PARTIAL PASS:** generalist mean 1.88x <= 2.0 AND beats random-init (2.03x); beats loss_det on 3/5 ODs"
+    - od: "251-20"
+      label: "251-20 · Kyiv whole-city zero-shot OD"
+      k_extra: 8
+      N: 3
+      K: 1
+    - od: "12-218"
+      label: "12-218 · Kyiv whole-city zero-shot OD"
+      k_extra: 8
+      N: 3
+      K: 1
+    - od: "58-204"
+      label: "58-204 · Kyiv whole-city zero-shot OD"
+      k_extra: 8
+      N: 3
+      K: 1
+    - od: "204-133"
+      label: "204-133 · Kyiv whole-city zero-shot OD"
+      k_extra: 8
+      N: 3
+      K: 1
   east_london:
     - od: "14-289"
       label: "14-289 · gen16 training OD"
