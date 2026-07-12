@@ -86,7 +86,7 @@ class AmbushPanel(QWidget, Exportable):
         self.score_chart = ChartWidget(title="ambush-score", height=2.2, width=3.4)
         self.score_card.layout_().addWidget(self.score_chart)
         cap = QLabel("computed live · exact expected values, no sampling")
-        cap.setStyleSheet(f"color: {theme.LIVE_ACCENT}; font-size: 10px; font-weight: 600;")
+        cap.setStyleSheet(f"color: {theme.LIVE_ACCENT}; font-size: 12px; font-weight: 600;")
         self.score_card.layout_().addWidget(cap)
         lay.addWidget(self.score_card)
 
@@ -216,7 +216,7 @@ class AmbushPanel(QWidget, Exportable):
         ax.set_yticks(range(len(bars)), labels)
         ax.invert_yaxis()
         for i, v in enumerate(vals):
-            ax.text(v + 0.01, i, f"{v:.3f}", va="center", fontsize=9,
+            ax.text(v + 0.01, i, f"{v:.3f}", va="center", fontsize=11,
                     color=theme.INK_SECONDARY)
         ax.set_xlim(0, max(vals) * 1.25 + 0.05)
         self.score_chart.set_caption("expected mission failure per sortie", "live")

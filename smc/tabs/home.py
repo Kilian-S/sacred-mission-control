@@ -57,7 +57,7 @@ class HomeTab(QWidget, Exportable):
         lay.addWidget(title)
         pitch = QLabel(PITCH)
         pitch.setWordWrap(True)
-        pitch.setStyleSheet("font-size: 15px;")
+        pitch.setStyleSheet("font-size: 17px;")
         pitch.setTextInteractionFlags(Qt.TextSelectableByMouse)
         lay.addWidget(pitch)
 
@@ -69,15 +69,15 @@ class HomeTab(QWidget, Exportable):
 
         def _muted(text: str) -> QLabel:
             w = QLabel(text)
-            w.setStyleSheet(f"color: {theme.INK_SECONDARY}; font-size: 11px;")
+            w.setStyleSheet(f"color: {theme.INK_SECONDARY}; font-size: 13px;")
             return w
 
         how = QLabel("How to read every number:")
-        how.setStyleSheet(f"color: {theme.INK_SECONDARY}; font-size: 11px; font-weight: 700;")
+        how.setStyleSheet(f"color: {theme.INK_SECONDARY}; font-size: 13px; font-weight: 700;")
         chip_live = QLabel("computed live · seed 0")
-        chip_live.setStyleSheet(f"color: {theme.LIVE_ACCENT}; font-size: 11px; font-weight: 600;")
+        chip_live.setStyleSheet(f"color: {theme.LIVE_ACCENT}; font-size: 13px; font-weight: 600;")
         chip_ledger = QLabel("ledger: experiments/gen14_evidence.md")
-        chip_ledger.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 11px;")
+        chip_ledger.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 13px;")
         for w in (how, chip_live, _muted("= solved on this machine as you watch"),
                   _muted("·"), chip_ledger, _muted("= quoted verbatim from the record"),
                   _muted("·"), EraBadge("pre-fix"), EraBadge("post-fix"),
@@ -101,7 +101,7 @@ class HomeTab(QWidget, Exportable):
         hero_card.layout_().addWidget(self.map)
         self.hero_caption = QLabel("Loading the headline instance…")
         self.hero_caption.setWordWrap(True)
-        self.hero_caption.setStyleSheet(f"color: {theme.INK_SECONDARY}; font-size: 11px;")
+        self.hero_caption.setStyleSheet(f"color: {theme.INK_SECONDARY}; font-size: 13px;")
         hero_card.layout_().addWidget(self.hero_caption)
         hl.addWidget(hero_card, 5)
 
@@ -127,13 +127,13 @@ class HomeTab(QWidget, Exportable):
             vals = [r["value"] for r in rows]
             cols = [theme.STRATEGY_COLOURS.get(r["arm"], theme.BLUE) for r in rows]
             ax.barh(range(len(rows)), vals, color=cols, height=0.62)
-            ax.set_yticks(range(len(rows)), [r["label"] for r in rows], fontsize=8)
+            ax.set_yticks(range(len(rows)), [r["label"] for r in rows], fontsize=10)
             ax.invert_yaxis()
             for i, v in enumerate(vals):
-                ax.text(v + 0.01, i, f"{v:.3f}", va="center", fontsize=8,
+                ax.text(v + 0.01, i, f"{v:.3f}", va="center", fontsize=10,
                         color=theme.INK_SECONDARY)
             ax.set_xlim(0, max(vals) * 1.2)
-            ax.set_xlabel(ladder["unit"], fontsize=8)
+            ax.set_xlabel(ladder["unit"], fontsize=10)
             caption = f"ledger: {ladder['ledger']}"
             if key == "singleconvoy":
                 caption += ("  ·  gen14's n=10 CI for the same cell: sacred 0.310 "
@@ -165,7 +165,7 @@ class HomeTab(QWidget, Exportable):
             btn.setMinimumHeight(66)
             btn.setMinimumWidth(0)
             btn.setStyleSheet(
-                f"QPushButton {{ text-align: left; padding: 10px 14px; font-size: 14px;"
+                f"QPushButton {{ text-align: left; padding: 10px 14px; font-size: 16px;"
                 f"font-weight: 600; background: {theme.SURFACE}; }}")
             btn.clicked.connect(lambda _=False, i=idx: self.go_to.emit(i))
             grid.addWidget(btn, 0, col)

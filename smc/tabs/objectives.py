@@ -68,15 +68,15 @@ class ExhibitBase(QWidget):
         q.setTextFormat(Qt.MarkdownText)
         q.setWordWrap(True)
         q.setStyleSheet(
-            f"font-size: 14px; font-style: italic; background: {theme.PAGE};"
+            f"font-size: 16px; font-style: italic; background: {theme.PAGE};"
             f"border-left: 3px solid {theme.BLUE}; border-radius: 4px; padding: 8px 10px;")
         head.layout_().addWidget(q)
         src = QLabel("the promise, verbatim · THESIS_STORYLINE.md (literature review §2.2)")
-        src.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 10px;")
+        src.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 12px;")
         head.layout_().addWidget(src)
         v = QLabel(verdict)
         v.setWordWrap(True)
-        v.setStyleSheet("font-weight: 600; font-size: 13px;")
+        v.setStyleSheet("font-weight: 600; font-size: 15px;")
         head.layout_().addWidget(v)
         self.lay.addWidget(head)
         self._built = False
@@ -101,18 +101,18 @@ class ExhibitBase(QWidget):
             for item in spec["items"]:
                 lab = QLabel(item["label"])
                 lab.setStyleSheet(
-                    f"color: {theme.INK_SECONDARY}; font-size: 11px; font-weight: 700;"
+                    f"color: {theme.INK_SECONDARY}; font-size: 13px; font-weight: 700;"
                     "text-transform: uppercase; letter-spacing: 0.04em;")
                 body = QLabel(item["quote"])
                 body.setTextFormat(Qt.MarkdownText)
                 body.setWordWrap(True)
                 body.setTextInteractionFlags(Qt.TextSelectableByMouse)
                 body.setStyleSheet(
-                    f"font-size: 13px; color: {theme.INK}; background: {theme.PAGE};"
+                    f"font-size: 15px; color: {theme.INK}; background: {theme.PAGE};"
                     f"border-left: 3px solid {theme.BASELINE}; border-radius: 4px;"
                     "padding: 8px 10px;")
                 src = QLabel("ledger: " + item.get("ledger", spec["ledger"]))
-                src.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 10px;")
+                src.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 12px;")
                 c.layout_().addWidget(lab)
                 c.layout_().addWidget(body)
                 c.layout_().addWidget(src)
@@ -143,7 +143,7 @@ class Obj1Exhibit(ExhibitBase):
                            ("equilibrium (calibrated)", Qt.AlignRight)):
             l = QLabel(txt)
             l.setAlignment(align)
-            l.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 10px;")
+            l.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 12px;")
             lr.addWidget(l)
         c.layout_().addWidget(lab_row)
         self.readout = QLabel("Solving the game…")
@@ -210,7 +210,7 @@ class Obj1Exhibit(ExhibitBase):
         ax.axhline(inst.sc_value, color=theme.STRATEGY_COLOURS["equilibrium"],
                    linestyle=":", linewidth=1.0)
         ax.annotate(f"equilibrium {inst.sc_value:.3f}", xy=(0.02, inst.sc_value),
-                    xycoords=("axes fraction", "data"), fontsize=8,
+                    xycoords=("axes fraction", "data"), fontsize=10,
                     color=theme.STRATEGY_COLOURS["equilibrium"], va="bottom")
         ax.set_xticks([0, 100, 200], ["deterministic", "uniform", "equilibrium"])
         ax.set_ylabel("exploitability")
@@ -258,7 +258,7 @@ class Obj2Exhibit(ExhibitBase):
         c.layout_().addWidget(self.map)
         cap = QLabel("threat map computed live: edge length mapped into the band (0.15, 0.95), "
                      "normalised over the whole graph (the env's absolute_vuln_norm)")
-        cap.setStyleSheet(f"color: {theme.LIVE_ACCENT}; font-size: 10px; font-weight: 600;")
+        cap.setStyleSheet(f"color: {theme.LIVE_ACCENT}; font-size: 12px; font-weight: 600;")
         c.layout_().addWidget(cap)
 
         fig_card = self.card("The extraction pipeline (arterial filter + 30 m consolidation)")
@@ -272,7 +272,7 @@ class Obj2Exhibit(ExhibitBase):
                     pl.setPixmap(pm.scaledToWidth(820, Qt.SmoothTransformation))
                     fig_card.layout_().addWidget(pl)
                 capf = QLabel(f"figure: {f}")
-                capf.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 10px;")
+                capf.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 12px;")
                 fig_card.layout_().addWidget(capf)
         self._load_city()
 
@@ -395,16 +395,16 @@ class Obj3Exhibit(ExhibitBase):
             ax.axhline(refs["competence bar"], color=theme.INK_MUTED, linestyle="--", linewidth=1.1)
             ax.annotate(f"competence bar {refs['competence bar']:.2f}",
                         xy=(1.0, refs["competence bar"]), xycoords=("axes fraction", "data"),
-                        fontsize=8, ha="right", va="bottom", color=theme.INK_MUTED)
+                        fontsize=10, ha="right", va="bottom", color=theme.INK_MUTED)
         if "equilibrium" in refs:
             ax.axhline(refs["equilibrium"], color=theme.STRATEGY_COLOURS["equilibrium"],
                        linestyle=":", linewidth=1.0)
             ax.annotate(f"equilibrium {refs['equilibrium']:.3f}", xy=(0.0, refs["equilibrium"]),
-                        xycoords=("axes fraction", "data"), fontsize=8, va="bottom",
+                        xycoords=("axes fraction", "data"), fontsize=10, va="bottom",
                         color=theme.STRATEGY_COLOURS["equilibrium"])
         ax.set_xlabel("sortie")
         ax.set_ylabel("exploitability (TAP)")
-        ax.legend(fontsize=8.5)
+        ax.legend(fontsize=10.5)
         self.erb_chart.set_caption(
             "yellow = ERB-seeded (ALNS demonstrations), blue = cold: the cold arms dive under "
             "the bar, the seeded arms never do · source: models/runs/gen23_c1 "
@@ -495,7 +495,7 @@ class Obj3Exhibit(ExhibitBase):
         ax.set_xlabel("sortie")
         ax.set_ylabel("exploitability (TAP)")
         if not many:
-            ax.legend(fontsize=8)
+            ax.legend(fontsize=10)
         self.traj.set_caption(
             f"dots = best checkpoints (the deployable object); the later drift toward uniform "
             f"is the disclosed last-iterate FP cycling · source: models/runs/{family}", "ledger")
@@ -572,7 +572,7 @@ class Obj4Exhibit(ExhibitBase):
         self.design_caption = QLabel("")
         self.design_caption.setWordWrap(True)
         self.design_caption.setStyleSheet(
-            f"color: {theme.LIVE_ACCENT}; font-size: 10px; font-weight: 600;")
+            f"color: {theme.LIVE_ACCENT}; font-size: 12px; font-weight: 600;")
         c.layout_().addWidget(self.design_caption)
         self._design_seq = 0
         self._design_city_loaded = False
@@ -602,7 +602,7 @@ class Obj4Exhibit(ExhibitBase):
         d3_label.setWordWrap(True)
         c3.layout_().addWidget(d3_label)
         d3_src = QLabel("ledger: experiments/d3_composite.md · artefact: models/runs/d3_composite.json")
-        d3_src.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 10px;")
+        d3_src.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 12px;")
         c3.layout_().addWidget(d3_src)
         self.add_quote_cards("obj4")
 
@@ -645,11 +645,11 @@ class Obj4Exhibit(ExhibitBase):
             ax.axhline(d1["true_opt"], color=theme.STRATEGY_COLOURS["equilibrium"],
                        linestyle=":", linewidth=1.0)
             ax.annotate(f"true optimum {d1['true_opt']:.3f}", xy=(0.02, d1["true_opt"]),
-                        xycoords=("axes fraction", "data"), fontsize=8, va="bottom",
+                        xycoords=("axes fraction", "data"), fontsize=10, va="bottom",
                         color=theme.STRATEGY_COLOURS["equilibrium"])
             ax.set_xlabel("evaluations")
             ax.set_ylabel("best design found")
-            ax.legend(fontsize=8.5)
+            ax.legend(fontsize=10.5)
             self.banked_chart.set_caption(
                 "banked D1 medians over 20 repeats: median 32.5 evaluations to the optimum vs "
                 "random never (d1_sbo_loop.md; artefact d1_sbo_loop.json)", "ledger")
@@ -758,11 +758,11 @@ class Obj4Exhibit(ExhibitBase):
                 linewidth=2.0, label="random search (live)")
         ax.axhline(opt, color=theme.STRATEGY_COLOURS["equilibrium"], linestyle=":", linewidth=1.0)
         ax.annotate(f"table optimum {opt:.3f}", xy=(0.02, opt),
-                    xycoords=("axes fraction", "data"), fontsize=8, va="bottom",
+                    xycoords=("axes fraction", "data"), fontsize=10, va="bottom",
                     color=theme.STRATEGY_COLOURS["equilibrium"])
         ax.set_xlabel("evaluations")
         ax.set_ylabel("best design found (median of 12 repeats)")
-        ax.legend(fontsize=8.5)
+        ax.legend(fontsize=10.5)
         self.race_chart.set_caption(
             "ridge surrogate re-fitted live over the banked F3 design table "
             "(simplified surrogate; the banked D1 loop below used the neural one)", "live")
@@ -873,7 +873,7 @@ class Obj5Exhibit(ExhibitBase):
             exact = self._per_engine[key].exploitability(spec)
             ax.axhline(exact, color=colour, linestyle=":", linewidth=1.0, alpha=0.85)
             ax.annotate(f"{key} {exact:.3f}", xy=(1.0, exact),
-                        xycoords=("axes fraction", "data"), fontsize=8, ha="right",
+                        xycoords=("axes fraction", "data"), fontsize=10, ha="right",
                         va="bottom", color=colour)
         # ledger rows that cannot be re-flown live
         rows = _exhibit_data()["headline_ladders"]["multiconvoy"]["rows"]
@@ -882,13 +882,13 @@ class Obj5Exhibit(ExhibitBase):
             ax.axhline(van["value"], color=theme.STRATEGY_COLOURS["vanilla"], linestyle="--",
                        linewidth=1.2, alpha=0.9)
             ax.annotate(f"vanilla {van['value']} (ledger row, gen14: no checkpoint on disk)",
-                        xy=(0.0, van["value"]), xycoords=("axes fraction", "data"), fontsize=8,
+                        xy=(0.0, van["value"]), xycoords=("axes fraction", "data"), fontsize=10,
                         va="bottom", color=theme.STRATEGY_COLOURS["vanilla"])
         banked = next((r for r in rows if r["arm"] == "sacred"), None)
         if banked:
             ax.annotate(
                 f"banked SACRED best-ckpt TAP {banked['value']} [0.246, 0.266] (gen14_evidence.md)",
-                xy=(0.0, banked["value"]), xycoords=("axes fraction", "data"), fontsize=8,
+                xy=(0.0, banked["value"]), xycoords=("axes fraction", "data"), fontsize=10,
                 va="top", color=theme.STRATEGY_COLOURS["sacred"])
         ax.set_xlabel("sortie")
         ax.set_ylabel("running mission-failure rate")
@@ -921,7 +921,7 @@ class Obj5Exhibit(ExhibitBase):
                     linewidth=1.4, label=f"equilibrium {od}")
         ax.set_xticks(range(len(cells_order)), cells_order)
         ax.set_ylabel("best-checkpoint exploitability")
-        ax.legend(fontsize=8, ncols=2)
+        ax.legend(fontsize=10, ncols=2)
         self.sweep_chart.set_caption(
             "SACRED < ALNS in all 10 cells; every value from the gen12 ledger table "
             "(gen12_sweeps.md; circles 62-97, squares 35-159; single-seed curve points "
@@ -997,11 +997,11 @@ class ZstExhibit(ExhibitBase):
         cols = [theme.STRATEGY_COLOURS["random_init"] if r.get("kind") == "boundary"
                 else theme.BLUE for r in rungs]
         ax.barh(range(len(rungs)), vals, color=cols, height=0.6)
-        ax.set_yticks(range(len(rungs)), labels, fontsize=8)
+        ax.set_yticks(range(len(rungs)), labels, fontsize=10)
         ax.invert_yaxis()
         ax.axvline(1.0, color=theme.STRATEGY_COLOURS["equilibrium"], linestyle=":", linewidth=1.0)
         for i, v in enumerate(vals):
-            ax.text(v + 0.03, i, f"{v:.2f}x", va="center", fontsize=9,
+            ax.text(v + 0.03, i, f"{v:.2f}x", va="center", fontsize=11,
                     color=theme.INK_SECONDARY)
         ax.set_xlabel("mean ratio to each instance's own equilibrium (1.0 = optimal)")
         self.ladder_chart.set_caption(

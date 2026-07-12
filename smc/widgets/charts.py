@@ -55,11 +55,11 @@ class ChartWidget(QWidget, Exportable):
         if kind == "live":
             self._caption.setText(f"computed live · {caption}")
             self._caption.setStyleSheet(
-                f"color: {theme.LIVE_ACCENT}; font-size: 11px; font-weight: 600;"
+                f"color: {theme.LIVE_ACCENT}; font-size: 13px; font-weight: 600;"
             )
         else:
             self._caption.setText(caption)
-            self._caption.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 11px;")
+            self._caption.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 13px;")
         self._caption.show()
 
     def axes(self):

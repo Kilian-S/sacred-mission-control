@@ -133,7 +133,7 @@ class PlaygroundTab(QWidget, Exportable):
         self.k_warning = QLabel("K=3 enumerates ~80k interdiction sets; expect a ~20-30 s solve. "
                                 "K=3 with N of 4 or more would need gigabytes and is refused.")
         self.k_warning.setWordWrap(True)
-        self.k_warning.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 10px;")
+        self.k_warning.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 12px;")
         self.k_warning.hide()
         lay.addWidget(self.k_warning)
 
@@ -155,7 +155,7 @@ class PlaygroundTab(QWidget, Exportable):
             br.addWidget(s)
         lay.addWidget(band_row)
         self.band_label = QLabel("band 0.15 - 0.95 (the headline setting)")
-        self.band_label.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 10px;")
+        self.band_label.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 12px;")
         lay.addWidget(self.band_label)
 
         lay.addWidget(hrule())
@@ -177,7 +177,7 @@ class PlaygroundTab(QWidget, Exportable):
         lay.addStretch(1)
         self.status = QLabel("")
         self.status.setWordWrap(True)
-        self.status.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 11px;")
+        self.status.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 13px;")
         lay.addWidget(self.status)
         return side
 

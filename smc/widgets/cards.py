@@ -40,7 +40,7 @@ class EraBadge(QLabel):
         super().__init__(text, parent)
         self.setStyleSheet(
             f"background: {bg}; color: {fg}; border-radius: 4px; padding: 2px 8px;"
-            "font-size: 10px; font-weight: 700; letter-spacing: 0.06em;"
+            "font-size: 12px; font-weight: 700; letter-spacing: 0.06em;"
         )
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setToolTip(
@@ -66,7 +66,7 @@ class StatusPill(QLabel):
             bg, fg = "#e9e8e2", theme.INK_SECONDARY
         self.setStyleSheet(
             f"background: {bg}; color: {fg}; border-radius: 4px; padding: 2px 8px;"
-            "font-size: 10px; font-weight: 700; letter-spacing: 0.04em;"
+            "font-size: 12px; font-weight: 700; letter-spacing: 0.04em;"
         )
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
@@ -90,11 +90,11 @@ class ProvenancedNumber(QWidget):
 
         v = QLabel(value)
         v.setStyleSheet(
-            f"font-size: {26 if big else 18}px; font-weight: 700; color: {theme.INK};"
+            f"font-size: {28 if big else 20}px; font-weight: 700; color: {theme.INK};"
         )
         v.setTextInteractionFlags(Qt.TextSelectableByMouse)
         lab = QLabel(label)
-        lab.setStyleSheet(f"font-size: 12px; color: {theme.INK_SECONDARY};")
+        lab.setStyleSheet(f"font-size: 14px; color: {theme.INK_SECONDARY};")
         lab.setWordWrap(True)
 
         prov = QLabel(
@@ -104,10 +104,10 @@ class ProvenancedNumber(QWidget):
         prov.setTextInteractionFlags(Qt.TextSelectableByMouse)
         if kind == "live":
             prov.setStyleSheet(
-                f"font-size: 10px; color: {theme.LIVE_ACCENT}; font-weight: 600;"
+                f"font-size: 12px; color: {theme.LIVE_ACCENT}; font-weight: 600;"
             )
         else:
-            prov.setStyleSheet(f"font-size: 10px; color: {theme.INK_MUTED};")
+            prov.setStyleSheet(f"font-size: 12px; color: {theme.INK_MUTED};")
 
         lay.addWidget(v)
         lay.addWidget(lab)
@@ -122,7 +122,7 @@ class StateLabel(QLabel):
         self.setAlignment(Qt.AlignCenter)
         self.setWordWrap(True)
         colour = {"empty": theme.INK_MUTED, "loading": theme.INK_SECONDARY, "error": "#8c2a22"}.get(kind, theme.INK_MUTED)
-        self.setStyleSheet(f"color: {colour}; font-size: 13px; padding: 24px;")
+        self.setStyleSheet(f"color: {colour}; font-size: 15px; padding: 24px;")
 
 
 def hrule() -> QFrame:

@@ -260,7 +260,7 @@ class MapView(QGraphicsView):
             self._scene.addItem(dot)
             self._heat_items[(f"__od_{label}", nid)] = dot  # cleared with the heat layer
             txt = QGraphicsSimpleTextItem(label)
-            f = QFont(theme.FONT_FAMILY, 10)
+            f = QFont(theme.FONT_FAMILY, 12)
             f.setBold(True)
             txt.setFont(f)
             txt.setBrush(QBrush(QColor(theme.INK)))
@@ -548,7 +548,7 @@ class MapView(QGraphicsView):
         painter.setPen(QColor(theme.INK_SECONDARY))
         if self._display_name:
             f = QFont(theme.FONT_FAMILY)
-            f.setPointSizeF(max(1.0, 11 / m11))
+            f.setPointSizeF(max(1.0, 13 / m11))
             f.setBold(True)
             painter.setFont(f)
             painter.drawText(QPointF(vis.left() + sx(12), vis.top() + sx(24)),
@@ -563,7 +563,7 @@ class MapView(QGraphicsView):
             painter.drawLine(QPointF(x0, y - sx(4)), QPointF(x0, y + sx(4)))
             painter.drawLine(QPointF(x0 + metres, y - sx(4)), QPointF(x0 + metres, y + sx(4)))
             f2 = QFont(theme.FONT_FAMILY)
-            f2.setPointSizeF(max(1.0, 9 / m11))
+            f2.setPointSizeF(max(1.0, 11 / m11))
             painter.setFont(f2)
             label = f"{metres} m" if metres < 1000 else f"{metres / 1000:g} km"
             painter.drawText(QPointF(x0 + metres + sx(6), y + sx(4)), label)

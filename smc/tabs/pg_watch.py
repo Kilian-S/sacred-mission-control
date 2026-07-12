@@ -119,7 +119,7 @@ class WatchPanel(QWidget, Exportable):
             lbl.setTextInteractionFlags(Qt.TextSelectableByMouse)
             self.oracle_card.layout_().addWidget(lbl)
         live_cap = QLabel("computed live · LP oracle on this instance")
-        live_cap.setStyleSheet(f"color: {theme.LIVE_ACCENT}; font-size: 10px; font-weight: 600;")
+        live_cap.setStyleSheet(f"color: {theme.LIVE_ACCENT}; font-size: 12px; font-weight: 600;")
         self.oracle_card.layout_().addWidget(live_cap)
         lay.addWidget(self.oracle_card)
 
@@ -377,10 +377,10 @@ class WatchPanel(QWidget, Exportable):
         ax.bar(x + 0.19, eq_marg, width=0.38,
                color=theme.STRATEGY_COLOURS["equilibrium"], alpha=0.85, label="equilibrium")
         ax.set_xticks(x)
-        ax.set_xlabel("route", fontsize=8)
-        ax.set_ylabel("share of convoys", fontsize=8)
-        ax.tick_params(labelsize=7)
-        ax.legend(fontsize=7, loc="upper right")
+        ax.set_xlabel("route", fontsize=10)
+        ax.set_ylabel("share of convoys", fontsize=10)
+        ax.tick_params(labelsize=9)
+        ax.legend(fontsize=9, loc="upper right")
         if d.key.startswith("policy:"):
             note = "the trained mixture vs the LP equilibrium: their agreement IS the claim"
         else:
@@ -427,7 +427,7 @@ class WatchPanel(QWidget, Exportable):
             hl.setContentsMargins(0, 0, 0, 0)
             hl.setSpacing(6)
             cell = QLabel(f"banked at {bank['cell']}")
-            cell.setStyleSheet(f"color: {theme.INK_SECONDARY}; font-size: 11px; font-weight: 600;")
+            cell.setStyleSheet(f"color: {theme.INK_SECONDARY}; font-size: 13px; font-weight: 600;")
             hl.addWidget(cell)
             hl.addWidget(EraBadge(bank.get("era", "post-fix")))
             hl.addStretch(1)
@@ -438,10 +438,10 @@ class WatchPanel(QWidget, Exportable):
                 q.setWordWrap(True)
                 q.setTextInteractionFlags(Qt.TextSelectableByMouse)
                 q.setStyleSheet(
-                    f"font-size: 12px; background: {theme.PAGE}; border-left: 3px solid "
+                    f"font-size: 14px; background: {theme.PAGE}; border-left: 3px solid "
                     f"{theme.BASELINE}; border-radius: 4px; padding: 5px 8px;")
                 src = QLabel("ledger: " + item.get("ledger", bank["ledger"]))
-                src.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 10px;")
+                src.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 12px;")
                 self.banked_body.addWidget(q)
                 self.banked_body.addWidget(src)
         if self._inst is not None and p["banked"]:
@@ -451,7 +451,7 @@ class WatchPanel(QWidget, Exportable):
                 m = QLabel(f"Note: the picker is at {here}; the anchors above were banked at "
                            f"{cell0} and do not apply to the current cell.")
                 m.setWordWrap(True)
-                m.setStyleSheet(f"color: #8c2a22; font-size: 10px;")
+                m.setStyleSheet(f"color: #8c2a22; font-size: 12px;")
                 self.banked_body.addWidget(m)
         self.banked_card.show()
 
@@ -582,16 +582,16 @@ class WatchPanel(QWidget, Exportable):
             ev = self._engine.expected_value(d, a)
             ax.axhline(ev, color=theme.INK, linewidth=1.1, linestyle="--")
             ax.annotate(f"exact {ev:.3f}", xy=(1.0, ev), xycoords=("axes fraction", "data"),
-                        fontsize=8, ha="right", va="bottom", color=theme.INK)
+                        fontsize=10, ha="right", va="bottom", color=theme.INK)
         ax.axhline(self._inst.mc_loss_det, color=theme.STRATEGY_COLOURS["alns"],
                    linewidth=1.0, linestyle=":")
         ax.axhline(self._inst.mc_value, color=theme.STRATEGY_COLOURS["equilibrium"],
                    linewidth=1.0, linestyle=":")
         ax.annotate(f"loss_det {self._inst.mc_loss_det:.3f}", xy=(0.0, self._inst.mc_loss_det),
-                    xycoords=("axes fraction", "data"), fontsize=7.5, va="bottom",
+                    xycoords=("axes fraction", "data"), fontsize=9.5, va="bottom",
                     color=theme.STRATEGY_COLOURS["alns"])
         ax.annotate(f"equilibrium {self._inst.mc_value:.3f}", xy=(0.0, self._inst.mc_value),
-                    xycoords=("axes fraction", "data"), fontsize=7.5, va="bottom",
+                    xycoords=("axes fraction", "data"), fontsize=9.5, va="bottom",
                     color=theme.STRATEGY_COLOURS["equilibrium"])
         ax.set_ylim(-0.03, 1.03)
         ax.set_xlabel("sortie")

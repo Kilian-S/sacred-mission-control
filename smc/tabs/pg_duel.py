@@ -132,7 +132,7 @@ class DuelPanel(QWidget, Exportable):
         self.lbl_anchors.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.anchor_card.layout_().addWidget(self.lbl_anchors)
         cap = QLabel("computed live · exact value iteration over the window-state MDP")
-        cap.setStyleSheet(f"color: {theme.LIVE_ACCENT}; font-size: 10px; font-weight: 600;")
+        cap.setStyleSheet(f"color: {theme.LIVE_ACCENT}; font-size: 12px; font-weight: 600;")
         self.anchor_card.layout_().addWidget(cap)
         lay.addWidget(self.anchor_card)
 
@@ -145,11 +145,11 @@ class DuelPanel(QWidget, Exportable):
         bq.setTextFormat(Qt.MarkdownText)
         bq.setWordWrap(True)
         bq.setStyleSheet(
-            f"font-size: 12px; background: {theme.PAGE}; border-left: 3px solid "
+            f"font-size: 14px; background: {theme.PAGE}; border-left: 3px solid "
             f"{theme.BASELINE}; border-radius: 4px; padding: 5px 8px;")
         self.banked_card.layout_().addWidget(bq)
         src = QLabel("ledger: experiments/gen19_b1lite1.md")
-        src.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 10px;")
+        src.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 12px;")
         self.banked_card.layout_().addWidget(src)
         lay.addWidget(self.banked_card)
 
@@ -541,7 +541,7 @@ class DuelPanel(QWidget, Exportable):
         ):
             ax.axhline(val, linewidth=1.0, linestyle=":", color=colour)
             ax.annotate(f"{name} {val:.3f}", xy=(0.0, val),
-                        xycoords=("axes fraction", "data"), fontsize=7.5, va="bottom",
+                        xycoords=("axes fraction", "data"), fontsize=9.5, va="bottom",
                         color=colour)
         ax.set_ylim(-0.02, max(0.7, float(r["static_det"]) + 0.05))
         ax.set_xlabel("sortie")

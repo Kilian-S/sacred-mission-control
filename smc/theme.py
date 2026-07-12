@@ -79,14 +79,14 @@ def build_qss() -> str:
     """Application stylesheet. Kept in one place so spacing/typography stay consistent."""
     return f"""
     QMainWindow, QDialog {{ background: {PAGE}; }}
-    QWidget {{ font-family: "{FONT_FAMILY}"; font-size: 13px; color: {INK}; }}
+    QWidget {{ font-family: "{FONT_FAMILY}"; font-size: 15px; color: {INK}; }}
 
     QTabWidget::pane {{ border: none; background: {PAGE}; }}
     QTabBar::tab {{
         background: transparent; color: {INK_SECONDARY};
         padding: 7px 18px; margin: 4px 2px 0 2px;
         border: none; border-bottom: 2px solid transparent;
-        font-size: 14px;
+        font-size: 16px;
     }}
     QTabBar::tab:selected {{ color: {INK}; border-bottom: 2px solid {BLUE}; font-weight: 600; }}
     QTabBar::tab:hover:!selected {{ color: {INK}; }}
@@ -140,12 +140,12 @@ def build_qss() -> str:
     }}
     QToolTip {{
         background: {INK}; color: {SURFACE}; border: none; padding: 5px 8px;
-        font-size: 12px;
+        font-size: 14px;
     }}
-    QLabel[caption="true"] {{ color: {INK_MUTED}; font-size: 11px; }}
-    QLabel[h1="true"] {{ font-size: 26px; font-weight: 700; }}
-    QLabel[h2="true"] {{ font-size: 18px; font-weight: 600; }}
-    QLabel[h3="true"] {{ font-size: 14px; font-weight: 600; }}
+    QLabel[caption="true"] {{ color: {INK_MUTED}; font-size: 13px; }}
+    QLabel[h1="true"] {{ font-size: 28px; font-weight: 700; }}
+    QLabel[h2="true"] {{ font-size: 20px; font-weight: 600; }}
+    QLabel[h3="true"] {{ font-size: 16px; font-weight: 600; }}
     QFrame[card="true"] {{
         background: {SURFACE}; border: 1px solid {GRID}; border-radius: 10px;
     }}
@@ -164,12 +164,12 @@ def apply_matplotlib_style() -> None:
         "savefig.dpi": 200,
         "font.family": "sans-serif",
         "font.sans-serif": ["Helvetica Neue", "Helvetica", "Arial"],
-        "font.size": 11,
+        "font.size": 13,
         "text.color": INK,
         "axes.edgecolor": BASELINE,
         "axes.labelcolor": INK_SECONDARY,
         "axes.titlecolor": INK,
-        "axes.titlesize": 12,
+        "axes.titlesize": 14,
         "axes.titleweight": "semibold",
         "axes.grid": True,
         "grid.color": GRID,
@@ -179,10 +179,10 @@ def apply_matplotlib_style() -> None:
         "axes.spines.right": False,
         "xtick.color": INK_MUTED,
         "ytick.color": INK_MUTED,
-        "xtick.labelsize": 10,
-        "ytick.labelsize": 10,
+        "xtick.labelsize": 12,
+        "ytick.labelsize": 12,
         "legend.frameon": False,
-        "legend.fontsize": 10,
+        "legend.fontsize": 12,
         "lines.linewidth": 2.0,
         "axes.prop_cycle": mpl.cycler(color=CATEGORICAL),
     })

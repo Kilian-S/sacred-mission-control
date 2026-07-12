@@ -61,7 +61,7 @@ class HistoryTab(QWidget, Exportable):
         self.banner.setWordWrap(True)
         self.banner.setStyleSheet(
             f"background: {theme.ERA_PREFIX_BG}; color: {theme.ERA_PREFIX_FG};"
-            "border-radius: 6px; padding: 7px 9px; font-size: 11px;")
+            "border-radius: 6px; padding: 7px 9px; font-size: 13px;")
         self.banner.hide()
         side_lay.addWidget(self.banner)
         self.sidebar = QListWidget()
@@ -198,12 +198,12 @@ class HistoryTab(QWidget, Exportable):
             + (f"   ·   instance {g.instance}" if g.instance else "")
             + (f"   ·   SHA {g.sha}" if g.sha else "")
         )
-        meta.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 11px;")
+        meta.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 13px;")
         head.layout_().addWidget(meta)
 
         q = QLabel(g.question)
         q.setWordWrap(True)
-        q.setStyleSheet(f"font-size: 13px; color: {theme.INK}; font-style: italic;")
+        q.setStyleSheet(f"font-size: 15px; color: {theme.INK}; font-style: italic;")
         head.layout_().addWidget(q)
 
         btn = QPushButton(f"Open ledger: {Path(g.ledger).name}")
@@ -227,7 +227,7 @@ class HistoryTab(QWidget, Exportable):
             for quote in g.quotes:
                 lab = QLabel(quote.label)
                 lab.setStyleSheet(
-                    f"color: {theme.INK_SECONDARY}; font-size: 11px; font-weight: 700;"
+                    f"color: {theme.INK_SECONDARY}; font-size: 13px; font-weight: 700;"
                     "text-transform: uppercase; letter-spacing: 0.04em;"
                 )
                 body = QLabel(quote.quote)
@@ -235,7 +235,7 @@ class HistoryTab(QWidget, Exportable):
                 body.setWordWrap(True)
                 body.setTextInteractionFlags(Qt.TextSelectableByMouse)
                 body.setStyleSheet(
-                    f"font-size: 13px; color: {theme.INK}; background: {theme.PAGE};"
+                    f"font-size: 15px; color: {theme.INK}; background: {theme.PAGE};"
                     f"border-left: 3px solid {theme.BASELINE}; border-radius: 4px;"
                     "padding: 8px 10px;"
                 )
@@ -244,7 +244,7 @@ class HistoryTab(QWidget, Exportable):
                     + ("" if quote.verified else "   ⚠ quote could not be re-verified against the ledger")
                 )
                 src.setStyleSheet(
-                    f"color: {'#8c2a22' if not quote.verified else theme.INK_MUTED}; font-size: 10px;"
+                    f"color: {'#8c2a22' if not quote.verified else theme.INK_MUTED}; font-size: 12px;"
                 )
                 src.setCursor(Qt.PointingHandCursor)
                 src.mousePressEvent = (
@@ -324,7 +324,7 @@ class HistoryTab(QWidget, Exportable):
                         pl.setPixmap(pm.scaledToWidth(760, Qt.SmoothTransformation))
                         fc.layout_().addWidget(pl)
                 cap = QLabel(f"figure: {f.relative_to(SACRED_ROOT)}")
-                cap.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 10px;")
+                cap.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 12px;")
                 fc.layout_().addWidget(cap)
             self.card_lay.insertWidget(self.card_lay.count() - 1, fc)
 
@@ -366,7 +366,7 @@ class HistoryTab(QWidget, Exportable):
             ax.invert_yaxis()
             ax.set_xlabel("exploitability on the held-out game")
             for i, v in enumerate(values):
-                ax.text(v + 0.01, i, f"{v:.3f}", va="center", fontsize=9, color=theme.INK_SECONDARY)
+                ax.text(v + 0.01, i, f"{v:.3f}", va="center", fontsize=11, color=theme.INK_SECONDARY)
         else:
             palette = [theme.BLUE, theme.AQUA, theme.YELLOW, theme.GREEN, theme.VIOLET,
                        theme.RED, theme.MAGENTA, theme.ORANGE]
@@ -413,7 +413,7 @@ class HistoryTab(QWidget, Exportable):
                 c = ref_styles.get(name, theme.INK_MUTED)
                 ax.axhline(val, color=c, linewidth=1.2, linestyle=":", alpha=0.9)
                 ax.annotate(f"{name} {val:.3f}", xy=(1.0, val), xycoords=("axes fraction", "data"),
-                            fontsize=8.5, color=c, ha="right", va="bottom")
+                            fontsize=10.5, color=c, ha="right", va="bottom")
             ax.set_xlabel("sortie")
             if kind == "generalist":
                 ax.set_ylabel("held-out ratio to equilibrium")
@@ -427,7 +427,7 @@ class HistoryTab(QWidget, Exportable):
             else:
                 ax.set_ylabel("exploitability (TAP)")
             if len(series) <= 8:
-                ax.legend(loc="best", fontsize=8.5)
+                ax.legend(loc="best", fontsize=10.5)
 
         src = ", ".join(payload.get("sources", [])[:4])
         more = len(payload.get("sources", [])) - 4

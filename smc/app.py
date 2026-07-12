@@ -31,7 +31,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("SACRED Mission Control")
-        self.resize(1360, 880)
+        self.resize(1480, 920)
 
         self.tabs = QTabWidget()
         self.tabs.setDocumentMode(True)

@@ -42,7 +42,7 @@ class MarkdownView(QTextBrowser):
         self.anchorClicked.connect(self._clicked)
         self.setStyleSheet(
             f"QTextBrowser {{ background: {theme.SURFACE}; border: 1px solid {theme.GRID}; "
-            f"border-radius: 8px; padding: 18px; font-size: 13px; }}"
+            f"border-radius: 8px; padding: 18px; font-size: 15px; }}"
         )
 
     def _clicked(self, url: QUrl) -> None:
@@ -110,7 +110,7 @@ class DocumentsTab(QWidget, Exportable):
         self.btn_fwd.setToolTip("Forward (Cmd+])")
         self.btn_fwd.clicked.connect(self.go_forward)
         self.crumb = QLabel("")
-        self.crumb.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 12px;")
+        self.crumb.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 14px;")
         self.crumb.setTextInteractionFlags(Qt.TextSelectableByMouse)
         blay.addWidget(self.btn_back)
         blay.addWidget(self.btn_fwd)
