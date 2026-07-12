@@ -87,6 +87,7 @@ class MapView(QGraphicsView):
         self._route_probs: list[float] = []
         self._heat_items: dict[_EDGE_KEY, QGraphicsPathItem] = {}
         self._ambush_items: list[QGraphicsItem] = []
+        self._attention_items: list[QGraphicsItem] = []
         self._convoys: list[ConvoyDot] = []
         self._hover_idx = -1
         self._edge_click_mode = False
@@ -105,6 +106,7 @@ class MapView(QGraphicsView):
         self._routes = []
         self._heat_items = {}
         self._ambush_items = []
+        self._attention_items = []
         self._convoys = []
         self._city = city
         self._pos = city.projected()
@@ -181,6 +183,7 @@ class MapView(QGraphicsView):
             self._scene.removeItem(rd.item)
         self._routes = []
         self.clear_ambush()
+        self.clear_attention()
         self.clear_convoys()
 
         # heat layer
@@ -287,6 +290,43 @@ class MapView(QGraphicsView):
             rd.item.setToolTip(f"route {rd.index}: P = {p:.3f}")
         if self._hover_idx >= 0:
             self._apply_hover(self._hover_idx)
+
+    # ------------------------------------------------------------- attention
+
+    def show_attention(self, edge_weights: dict[tuple[str, str], float]) -> None:
+        """The adversary's anticipation: orange mass glowing under the routes.
+
+        Opacity encodes ABSOLUTE probability mass, so a concentrated attacker
+        burns bright on one or two edges while an undecided one is a faint
+        wash over many; negligible mass (< 1%) is not drawn at all. Pure
+        display; the caller computes the weights and labels them live."""
+        self.clear_attention()
+        for (u, v), wgt in edge_weights.items():
+            if wgt < 0.01:
+                continue
+            pts = self._edge_points(str(u), str(v))
+            if not pts:
+                continue
+            path = QPainterPath(pts[0])
+            for q in pts[1:]:
+                path.lineTo(q)
+            item = QGraphicsPathItem(path)
+            c = QColor(theme.STRATEGY_COLOURS["attacker"])
+            c.setAlphaF(min(0.85, 0.15 + 2.2 * wgt))
+            # wider than the widest route ribbon (65), so the glow halos out
+            # from under a fully-concentrated mixture instead of hiding
+            pen = QPen(c, 72.0)
+            pen.setCapStyle(Qt.RoundCap)
+            item.setPen(pen)
+            item.setZValue(3)  # above the threat heat, below the route ribbons
+            item.setToolTip(f"the interdictor's anticipation here: P = {wgt:.3f} (computed live)")
+            self._attention_items.append(item)
+            self._scene.addItem(item)
+
+    def clear_attention(self) -> None:
+        for it in self._attention_items:
+            self._scene.removeItem(it)
+        self._attention_items = []
 
     # ------------------------------------------------------------- ambush
 

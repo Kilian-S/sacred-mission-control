@@ -123,6 +123,14 @@ class WatchPanel(QWidget, Exportable):
         self.oracle_card.layout_().addWidget(live_cap)
         lay.addWidget(self.oracle_card)
 
+        self.mix_card = Card()
+        mh = QLabel("Route mixtures, compared")
+        mh.setProperty("h3", True)
+        self.mix_card.layout_().addWidget(mh)
+        self.mix_chart = ChartWidget(title="playground-mixture-compare", height=2.1, width=3.4)
+        self.mix_card.layout_().addWidget(self.mix_chart)
+        lay.addWidget(self.mix_card)
+
         self.policy_card = Card()
         ph = QLabel("Trained policy on this instance")
         ph.setProperty("h3", True)
@@ -350,7 +358,35 @@ class WatchPanel(QWidget, Exportable):
             self.map.set_route_mixture(list(marg), colour)
         self._engine.reset_stats()
         self._update_readouts()
+        self._redraw_mixture_compare(d, colour)
         self._redraw_convergence()
+
+    def _redraw_mixture_compare(self, d: DefenderSpec, colour: str) -> None:
+        """Current defender's per-route share of convoys beside the LP
+        equilibrium's: when a trained SACRED mixture sits on the equilibrium
+        bars, the headline claim is visible in one glance."""
+        if self._engine is None or self._inst is None:
+            return
+        inst = self._inst
+        ax = self.mix_chart.clear()
+        eq_marg = self._engine._stacked_route_marginal(inst.mc_defender)
+        cur = d.route_dist if d.route_dist is not None \
+            else self._engine._stacked_route_marginal(d.occ_dist)
+        x = np.arange(inst.n_routes)
+        ax.bar(x - 0.19, cur, width=0.38, color=colour, label="current defender")
+        ax.bar(x + 0.19, eq_marg, width=0.38,
+               color=theme.STRATEGY_COLOURS["equilibrium"], alpha=0.85, label="equilibrium")
+        ax.set_xticks(x)
+        ax.set_xlabel("route", fontsize=8)
+        ax.set_ylabel("share of convoys", fontsize=8)
+        ax.tick_params(labelsize=7)
+        ax.legend(fontsize=7, loc="upper right")
+        if d.key.startswith("policy:"):
+            note = "the trained mixture vs the LP equilibrium: their agreement IS the claim"
+        else:
+            note = "this defender's route marginal vs the LP equilibrium mixture"
+        self.mix_chart.set_caption(note, "live")
+        self.mix_chart.redraw()
 
     def _update_readouts(self) -> None:
         if self._engine is None or self._inst is None:

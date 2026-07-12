@@ -11,6 +11,7 @@ from __future__ import annotations
 import numpy as np
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QHBoxLayout,
     QLabel,
@@ -80,6 +81,13 @@ class DuelPanel(QWidget, Exportable):
         self.tau_combo.addItems(["0.15", "0.05"])
         self.tau_combo.currentIndexChanged.connect(self._rebuild_game)
         bl.addWidget(self.tau_combo)
+        self.attention_check = QCheckBox("Show anticipation")
+        self.attention_check.setChecked(True)
+        self.attention_check.setToolTip(
+            "Glow the edges by the interdictor's CURRENT response to your recent routes, "
+            "before you commit the next sortie (computed live)")
+        self.attention_check.toggled.connect(self._update_attention)
+        bl.addWidget(self.attention_check)
         bl.addStretch(1)
         self.play_btn = QPushButton("▶ Play (Space)")
         self.play_btn.setProperty("accent", True)
@@ -161,11 +169,13 @@ class DuelPanel(QWidget, Exportable):
         hh.setProperty("h3", True)
         self.help_card.layout_().addWidget(hh)
         ht = QLabel(
-            "The interdictor watches your last w sorties and positions accordingly. "
+            "The interdictor watches your last w sorties and positions accordingly: the "
+            "ORANGE GLOW is where it is looking right now, updated after every sortie. "
             "A fixed route is destroyed (static_det); mixing blindly is safe but "
             "over-conservative (iid_eq); anticipating the anticipator (avoid your own "
-            "recent pattern) reaches the dynamic optimum (history_opt). Click routes "
-            "yourself to feel it, or let the gen19 policy play.")
+            "recent pattern, fly where the glow is not) reaches the dynamic optimum "
+            "(history_opt). Click routes yourself to feel it, or let the gen19 policy "
+            "play and watch it dodge the glow.")
         ht.setWordWrap(True)
         self.help_card.layout_().addWidget(ht)
         lay.addWidget(self.help_card)
@@ -287,6 +297,37 @@ class DuelPanel(QWidget, Exportable):
         self.map.clear_ambush()
         self._show_mixture()
         self._update_running()
+        self._update_attention()
+
+    def _update_attention(self, *_args) -> None:
+        """Show where the interdictor is looking for the NEXT sortie, given
+        the current window: the pattern-of-life game made visible."""
+        if self._game is None or self._duel is None or self._inst is None:
+            return
+        if not self.attention_check.isChecked():
+            self.map.clear_attention()
+            return
+        g, duel = self._game, self._duel
+        attacker = self.att_combo.currentData()
+        if attacker == "pattern_of_life":
+            a = duel_mod.softmax_br_dist(g, duel.window_counts())
+        elif attacker == "empirical_br":
+            dist = duel.empirical_route_dist()
+            j = int(np.argmax(dist @ g.L))
+            a = np.zeros(g.L.shape[1])
+            a[j] = 1.0
+        else:
+            self.map.clear_attention()
+            return
+        weights: dict[tuple[str, str], float] = {}
+        for j, p in enumerate(a):
+            if p <= 1e-9:
+                continue
+            for e in self._inst.interdiction_sets[j]:
+                uv = tuple(e)
+                key = (uv[0], uv[-1])
+                weights[key] = weights.get(key, 0.0) + float(p)
+        self.map.show_attention(weights)
 
     def set_seed(self, seed: int) -> None:
         self.seed = seed
@@ -435,6 +476,7 @@ class DuelPanel(QWidget, Exportable):
             self._timer.stop()
             self._show_mixture()
             self._update_running()
+            self._update_attention()
             if self._playing:
                 QTimer.singleShot(260, self._next_sortie)
 
@@ -475,6 +517,7 @@ class DuelPanel(QWidget, Exportable):
         self.map.clear_convoys()
         self.map.clear_ambush()
         self._update_running()
+        self._update_attention()
 
     def _update_running(self) -> None:
         if self._duel is None or self._game is None:
