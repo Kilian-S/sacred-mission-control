@@ -237,6 +237,8 @@ def load_tb_chart(gen_id: str, tb_runs: tuple[str, ...]) -> dict[str, Any]:
                     "y": [p.value for p in sc],
                 })
                 sources.append(rel)
+                if len(series) >= 6:
+                    break
             except Exception:
                 continue  # unreadable events file: skip, never crash the card
         if len(series) >= 6:

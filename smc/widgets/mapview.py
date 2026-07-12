@@ -528,34 +528,45 @@ class MapView(QGraphicsView):
     # ------------------------------------------------------------- overlay
 
     def drawForeground(self, painter: QPainter, rect) -> None:
-        """Viewport-fixed cartographic furniture: the city name and a scale
-        bar (scene units are metres from the equirectangular projection)."""
+        """Viewport-anchored cartographic furniture: the city name and a
+        scale bar. Drawn in SCENE coordinates (scene units are metres from
+        the equirectangular projection), converting pixel margins through the
+        current zoom, so it renders identically on screen and under any
+        export painter transform (resetTransform would break the 3x PNG)."""
         super().drawForeground(painter, rect)
         if self._city is None:
             return
+        m11 = abs(self.transform().m11())  # viewport px per metre
+        if m11 <= 0:
+            return
+        vis = self.mapToScene(self.viewport().rect()).boundingRect()
+
+        def sx(px: float) -> float:
+            return px / m11
+
         painter.save()
-        painter.resetTransform()
+        painter.setPen(QColor(theme.INK_SECONDARY))
         if self._display_name:
-            f = QFont(theme.FONT_FAMILY, 11)
+            f = QFont(theme.FONT_FAMILY)
+            f.setPointSizeF(max(1.0, 11 / m11))
             f.setBold(True)
             painter.setFont(f)
-            painter.setPen(QColor(theme.INK_SECONDARY))
-            painter.drawText(12, 22, self._display_name)
-        m11 = abs(self.transform().m11())  # metres -> viewport px
-        if m11 > 0:
-            vh = self.viewport().height()
-            candidates = (20, 50, 100, 200, 500, 1000, 2000, 5000, 10000)
-            metres = next((c for c in candidates if 60 <= c * m11 <= 160), None)
-            if metres is not None:
-                px = int(metres * m11)
-                y = vh - 14
-                painter.setPen(QPen(QColor(theme.INK_SECONDARY), 2))
-                painter.drawLine(12, y, 12 + px, y)
-                painter.drawLine(12, y - 4, 12, y + 4)
-                painter.drawLine(12 + px, y - 4, 12 + px, y + 4)
-                painter.setFont(QFont(theme.FONT_FAMILY, 9))
-                label = f"{metres} m" if metres < 1000 else f"{metres / 1000:g} km"
-                painter.drawText(12 + px + 6, y + 4, label)
+            painter.drawText(QPointF(vis.left() + sx(12), vis.top() + sx(24)),
+                             self._display_name)
+        candidates = (20, 50, 100, 200, 500, 1000, 2000, 5000, 10000)
+        metres = next((c for c in candidates if 60 <= c * m11 <= 160), None)
+        if metres is not None:
+            x0 = vis.left() + sx(12)
+            y = vis.bottom() - sx(14)
+            painter.setPen(QPen(QColor(theme.INK_SECONDARY), sx(2)))
+            painter.drawLine(QPointF(x0, y), QPointF(x0 + metres, y))
+            painter.drawLine(QPointF(x0, y - sx(4)), QPointF(x0, y + sx(4)))
+            painter.drawLine(QPointF(x0 + metres, y - sx(4)), QPointF(x0 + metres, y + sx(4)))
+            f2 = QFont(theme.FONT_FAMILY)
+            f2.setPointSizeF(max(1.0, 9 / m11))
+            painter.setFont(f2)
+            label = f"{metres} m" if metres < 1000 else f"{metres / 1000:g} km"
+            painter.drawText(QPointF(x0 + metres + sx(6), y + sx(4)), label)
         painter.restore()
 
     def mousePressEvent(self, event):

@@ -1,6 +1,11 @@
 """Scripted smoke: open the app, walk every tab (and History generations),
 screenshot each state, then quit. Used at every milestone and by M5's audit.
 
+Steps with asynchronous work carry a READY predicate: the smoke polls it
+(up to a timeout) before shooting, so a screenshot can never silently capture
+the pre-completion state (the old fixed 2.2 s delay produced byte-identical
+before/after ZST shots).
+
 Usage: .venv/bin/python scripts/smoke_screenshot.py [outdir]
 """
 
@@ -128,7 +133,30 @@ def main() -> int:
 
     shots.append(("home-final", lambda: win.tabs.setCurrentIndex(0)))
 
-    state = {"i": 0}
+    # ready predicates: shoot only once the step's asynchronous work landed
+    def _duel_loaded():
+        d = win.playground_tab.duel
+        return d._policy is not None or "failed" in d.run_label.text()
+
+    def _zst_done():
+        ex = obj._exhibits[5][1]
+        return ex.eval_btn.isEnabled() and ("Generalist" in ex.result_label.text()
+                                            or "failed" in ex.zst_label.text())
+
+    ready = {
+        "playground": lambda: win.playground_tab._inst is not None,
+        "duel-load": _duel_loaded,
+        "duel-batch": lambda: win.playground_tab.duel.batch_btn.isEnabled(),
+        "duel-batch2": lambda: win.playground_tab.duel.batch_btn.isEnabled(),
+        "watch-batch": lambda: win.playground_tab.watch.batch_btn.isEnabled(),
+        "objective-3": lambda: obj._exhibits[2][1].family_state.isHidden(),
+        "objective-4": lambda: hasattr(obj._exhibits[3][1], "_test_rows"),
+        "objective-5": lambda: hasattr(obj._exhibits[4][1], "_contenders"),
+        "objective-4-race": lambda: obj._exhibits[3][1].race_btn.isEnabled(),
+        "zst-eval-done": _zst_done,
+    }
+
+    state = {"i": 0, "waited": 0.0}
 
     def step():
         i = state["i"]
@@ -142,7 +170,18 @@ def main() -> int:
         name, action = shots[i]
         action()
         state["i"] += 1
-        QTimer.singleShot(2200, step)
+        state["waited"] = 0.0
+        QTimer.singleShot(2200, lambda: settle(name))
+
+    def settle(name: str, poll_ms: int = 250, timeout_s: float = 45.0):
+        cond = ready.get(name)
+        if cond is not None and not cond() and state["waited"] < timeout_s:
+            state["waited"] += poll_ms / 1000.0
+            QTimer.singleShot(poll_ms, lambda: settle(name))
+            return
+        if cond is not None and state["waited"] >= timeout_s:
+            print(f"WARNING: step {name} never became ready; shooting anyway")
+        step()
 
     QTimer.singleShot(1200, step)
     return app.exec()

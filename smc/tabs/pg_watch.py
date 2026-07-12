@@ -535,8 +535,25 @@ class WatchPanel(QWidget, Exportable):
         if d is None or a is None:
             return
         self.stop_play()
-        for _ in range(500):
-            self._engine.play_sortie(d, a)
+        # in a worker: at K=3 a sortie samples from ~80k-entry distributions
+        # and 500 of them would stall the UI thread
+        self.batch_btn.setEnabled(False)
+        self.play_btn.setEnabled(False)
+        engine = self._engine
+
+        def batch():
+            for _ in range(500):
+                engine.play_sortie(d, a)
+            return engine
+
+        run_in_background(batch, on_done=self._batch_done,
+                          on_fail=lambda tb: self._batch_done(None))
+
+    def _batch_done(self, engine) -> None:
+        self.batch_btn.setEnabled(True)
+        self.play_btn.setEnabled(True)
+        if engine is None or engine is not self._engine:
+            return  # instance changed mid-batch; discard
         self.map.clear_convoys()
         self.map.clear_ambush()
         self._update_running()

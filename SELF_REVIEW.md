@@ -76,3 +76,58 @@ the brief (findings appended when received). Status: fixed items marked [FIXED].
 Reviewer's "convincingly right" list (provenance discipline enforced by tests; live maths
 matches the banked record exactly; era hygiene structural; honest degradation throughout)
 retained unchanged; none of the fixes touched those paths' behaviour.
+
+## Round 3 (2026-07-12): second independent review, humanist/visual audit + fix round
+
+Findings against the brief and against the humanist/visual principles, all implemented
+the same day (commits 71f89b8..HEAD). Ranked as found:
+
+1. [FIXED, demo-critical] The documented Cmd shortcuts were bound to the CONTROL key:
+   Qt on macOS maps "Meta" to Control and "Ctrl" to Command. Cmd+1..5/Cmd+E/Cmd+[]
+   now work as written; the standard Back/Forward keys stay unbound so Cmd+Left/Right
+   keep moving the text cursor in Documents.
+2. [FIXED, staleness] The sacred agent had banked gen20-23, D3-on-Gdansk, the whole-Kyiv
+   row and the K/N rows since handover; several on-screen verdicts were behind or wrong
+   (Kyiv "no banked results"; Obj-3's ERB wording now contradicted by gen23). All folded
+   in with verbatim provenance; Kyiv became a live Playground city (measured 0.6 s
+   solves); the roster gained gen20 (reproduces its banked 0.355 exactly), gen22, and
+   gen21 explicitly labelled as the control.
+3. [FIXED, visual truth] Interceptions did not happen at the ambush: the duel killed
+   convoys at the FOB after driving through the ambush edge; watch/home stopped dots at
+   edge-count fractions that diverge from the drawn geometry; mark_lost repainted every
+   victim in the shortest-path red, destroying the red-vs-blue identity on Home.
+   Convoys now die ON the committed edge (MapView.fraction_of_edge, monotonicity-tested),
+   the duel's ambush springs at the interception moment, and destroyed convoys keep
+   their colour and gain a cross.
+4. [FIXED, reliability root cause] workers.py used autoDelete + discarded worker
+   references, so the pool destroyed the signal sender the moment run() returned and a
+   QUEUED finished/failed emission was dropped whenever the UI thread was busy. This is
+   the probable root cause of round 1's "smoke is flaky when piped" (accepted then,
+   root cause not chased) and round 2's byte-identical duel shots. A module registry now
+   holds every worker until delivery; regression tests added (tests/test_workers.py).
+5. [ADDED, the two visual gaps that mattered most] The duel shows the interdictor's
+   ANTICIPATION as an orange glow (absolute-probability opacity; "fly where the glow is
+   not"), and Watch shows the current defender's route mixture beside the LP
+   equilibrium's, so the central claim (SACRED sits on the equilibrium) is visible.
+6. [ADDED, brief-compliance] Cmd+E now exports every visible map view as true vector
+   SVG + 3x PNG (§2 required PNG AND SVG for map views); Obj-4's "click a design to see
+   it on the map" line is implemented (live-solved design shown as a game); campaign
+   generations draw their tfevents evidence (the ~0.91 plateau) beside the verbatim
+   quotes.
+7. [ADDED, orientation] Home legend for the provenance colour language; History banner
+   for uncurated run families on disk; Obj-3 loading/error states; the History gif
+   scales (QMovie.scaledSize is invalid before the first frame); city name + scale bar +
+   arterial/minor street weights on every map.
+8. [FIXED, self-caught in this round's re-review] drawForeground used resetTransform,
+   which broke composition under the 3x export painter (now drawn in scene
+   coordinates); Obj-4's design map was a blank pane before the first pick (hidden until
+   then); Watch's 500-sortie batch ran on the UI thread (worker + guards now, like the
+   duel); the tb series cap leaked past 6.
+9. [VERIFIED] Suite 28 green in ~2 s; SMC_SLOW_TESTS=1 adds the torch anchor pins
+   (gen14 seed 0 in the banked per-seed set; gen20 seed 0 = 0.355 exactly); the smoke
+   walks all 27 states with ready-predicate waits and, for the first time, captures the
+   COMPLETED zero-shot evaluation (both Gdansk maps + live-labelled ratios).
+10. [ACCEPTED] matplotlib's "constrained_layout collapsed to zero" warning can appear
+    for charts first drawn at zero height inside collapsed scroll panes; cosmetic.
+    Obj-1's attacker-options bars remain index-labelled (candidate next step in
+    HANDOVER).

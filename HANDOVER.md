@@ -1,8 +1,10 @@
-# HANDOVER.md: state and onboarding for the next agent (2026-07-11)
+# HANDOVER.md: state and onboarding for the next agent (2026-07-11, updated 2026-07-12)
 
-Built in one day against `../MISSION_CONTROL_BRIEF.md` (read it first; it is the contract).
-All five milestones delivered and committed; suite 23 green; smoke walks every tab and
-exhibit and screenshots each (`scripts/smoke_screenshot.py`, output in `screenshots/`).
+Built in one day against `MISSION_CONTROL_BRIEF.md` (read it first; it is the contract),
+then extended in a second autonomous round (see "Round 3" below and SELF_REVIEW.md).
+All five milestones delivered and committed; suite 28 green (+2 opt-in torch anchor
+tests via `SMC_SLOW_TESTS=1`); smoke walks every tab and exhibit with ready-predicate
+waits and screenshots each (`scripts/smoke_screenshot.py`, output in `screenshots/`).
 
 ## What exists
 
@@ -46,13 +48,38 @@ exhibit and screenshots each (`scripts/smoke_screenshot.py`, output in `screensh
 5. **Laziness**: torch/torch_geometric only imported inside worker threads
    (`policies.py`, `duel.py`); tfevents never loaded eagerly; heavy work through
    `smc/workers.run_in_background`.
+6. **Worker lifetime**: `run_in_background` parks every worker in a module registry
+   until its finished/failed signal is DELIVERED on the UI thread. Do not restore
+   `setAutoDelete(True)`: with autoDelete, the pool destroys the sender right after
+   run(), and queued results are silently dropped whenever the UI thread is busy
+   (this was the documented smoke flakiness and the round-2 byte-identical shots).
+
+## Round 3 (2026-07-12): what changed after the second review
+
+- **gen20-23 + d3g folded in** (History records with verbatim quotes, f2/c1 chart
+  loaders, exhibit quote cards, verdict lines); **Kyiv is a live Playground city**
+  (5 screened ODs, ~0.6 s solves); the transfer ladder gained the Istanbul and Kyiv
+  rungs; Home's generation count is computed from the index.
+- **Keyboard fixed**: `Meta+` bound the Control key on macOS; everything is `Ctrl+`
+  (= Cmd) now.
+- **Interception truthfulness**: convoys die ON the ambush edge (scene-length
+  `MapView.fraction_of_edge`); the duel's ambush springs at the moment of interception;
+  destroyed convoys keep their strategy colour and gain a cross.
+- **The adversary made visible**: the duel glows the interdictor's current softmax
+  anticipation on the map (absolute-mass opacity, toggleable); Watch compares the
+  current defender's route mixture against the LP equilibrium per route.
+- **Cartography**: city name + zoom-aware scale bar (drawn in scene coordinates so
+  exports keep composition); arterial/minor street weights; Cmd+E exports every visible
+  map as vector SVG + 3x PNG.
+- **Campaign evidence**: gen01-07 cards now draw their TensorBoard scalars (rolling
+  mean over the raw cloud) via `gen_charts.load_tb_chart`.
+- **Honesty furniture**: History banners uncurated run families; Home teaches the
+  provenance colour language; Obj-3 has loading/error states; the History gif scales.
+- **Reliability**: the worker lost-result race fixed (invariant 6 above); the smoke
+  waits on ready predicates instead of fixed delays.
 
 ## Known limitations / candidate next steps
 
-- Campaign-era tfevents (gen01-07) are indexed in the narrative index (`tb_runs` fields)
-  but no tfevents chart loader is wired; campaign cards show figures + verbatim quotes
-  only. A worker-side `event_accumulator` reader would slot into
-  `smc/sacred_bridge/gen_charts.py`.
 - Single-convoy trained actors: none exist on disk post-fix except zst_step0's one actor
   (walk-mode), so single-convoy live demos are oracle-level only (honest per DATA_MAP).
 - K=3 live solves take ~20-30 s (warned in the UI); K>=4 needs sacred's greedy BR
@@ -61,16 +88,20 @@ exhibit and screenshots each (`scripts/smoke_screenshot.py`, output in `screensh
   10 cells would need ~1 min of ALNS+LP per open and was deliberately not done.
 - The Obj-4 live race uses a ridge surrogate (labelled "simplified") over the banked F3
   design table; the banked D1 curves (neural surrogate) are shown alongside.
-- If the sacred agent lands NEW generations (gen20+), add a record to
-  `data/narrative_index.yaml` (quotes verbatim!) and, if it has run JSONs, a spec in
-  `gen_charts._FAMILY_SPECS`. Everything else auto-detects.
+- Obj-1's attacker-options bars are indexed by interdiction set; linking a bar hover to
+  its edge on a mini-map is the next didactic step.
+- If the sacred agent lands NEW generations (gen24+), the History banner will flag them;
+  add a record to `data/narrative_index.yaml` (quotes verbatim!) and, if it has run
+  JSONs, a spec in `gen_charts._FAMILY_SPECS`. Everything else auto-detects.
 
 ## Verification
 
 ```bash
-.venv/bin/python -m pytest tests/ -q                      # all green expected
+.venv/bin/python -m pytest tests/ -q                      # 28 green expected
+SMC_SLOW_TESTS=1 .venv/bin/python -m pytest tests/ -q    # + 2 torch actor-anchor pins
 .venv/bin/python scripts/smoke_screenshot.py /tmp/shots   # 27 screenshots, exit 0
 ./run.sh                                                  # idle memory well under 1 GB
 ```
-Note: pipe the smoke's output to a file, not through `grep`/`head` (piping has produced
-flaky empty runs).
+The historical smoke flakiness when piping output was almost certainly the worker
+lost-result race (fixed; see invariant 6). Writing the smoke's output to a file remains
+the tidy habit.

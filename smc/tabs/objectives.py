@@ -567,6 +567,7 @@ class Obj4Exhibit(ExhibitBase):
         c.layout_().addWidget(self.design_label)
         self.design_map = MapView()
         self.design_map.setMinimumHeight(360)
+        self.design_map.hide()  # appears with the first clicked design
         c.layout_().addWidget(self.design_map)
         self.design_caption = QLabel("")
         self.design_caption.setWordWrap(True)
@@ -676,6 +677,7 @@ class Obj4Exhibit(ExhibitBase):
     def _design_ready(self, inst, seq: int) -> None:
         if seq != self._design_seq:
             return  # another design was clicked meanwhile
+        self.design_map.show()
         if not self._design_city_loaded:
             self.design_map.set_city(inst.city_map)
             self._design_city_loaded = True
@@ -687,6 +689,8 @@ class Obj4Exhibit(ExhibitBase):
                 for ri, c in enumerate(occ):
                     marg[ri] += p * c / inst.N
         self.design_map.set_route_mixture(list(marg))
+        # the map may have been hidden until now; refit once the layout has run
+        QTimer.singleShot(0, self.design_map.fit_routes)
         self.design_caption.setText(
             f"computed live · the design {inst.s}-{inst.t} (N={inst.N}) as a game: equilibrium "
             f"mixture drawn; loss_mixed {inst.mc_value:.3f}, loss_det {inst.mc_loss_det:.3f}")
