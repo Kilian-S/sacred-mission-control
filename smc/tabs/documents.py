@@ -122,10 +122,12 @@ class DocumentsTab(QWidget, Exportable):
         split.addWidget(right)
         split.setSizes([320, 900])
 
+        # "Ctrl" = the Command key on macOS. The standard Back/Forward keys are
+        # deliberately not bound: they include Cmd+Left/Right, which would steal
+        # cursor movement from the search field and the text viewer.
         for keys, fn in ((QKeySequence.Find, self._focus_search),
-                         (QKeySequence("Meta+["), self.go_back),
-                         (QKeySequence("Meta+]"), self.go_forward),
-                         (QKeySequence.Back, self.go_back)):
+                         (QKeySequence("Ctrl+["), self.go_back),
+                         (QKeySequence("Ctrl+]"), self.go_forward)):
             QShortcut(keys, self, activated=fn, context=Qt.WidgetWithChildrenShortcut)
 
         self._populate_tree()

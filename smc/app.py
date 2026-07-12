@@ -57,10 +57,11 @@ class MainWindow(QMainWindow):
         if hasattr(self.home_tab, "go_to"):
             self.home_tab.go_to.connect(self.tabs.setCurrentIndex)
 
+        # Qt on macOS maps "Ctrl" to the Command key ("Meta" would be Control).
         for i in range(5):
-            QShortcut(QKeySequence(f"Meta+{i + 1}"), self,
+            QShortcut(QKeySequence(f"Ctrl+{i + 1}"), self,
                       activated=lambda idx=i: self.tabs.setCurrentIndex(idx))
-        QShortcut(QKeySequence("Meta+E"), self, activated=self._export_current)
+        QShortcut(QKeySequence("Ctrl+E"), self, activated=self._export_current)
 
         self.statusBar().showMessage("Ready")
 
