@@ -19,6 +19,9 @@ chapters:
   - id: expansion
     title: "The expansion programme"
     subtitle: "Zero-shot transfer, the SBO stack, pattern-of-life dynamism (10-11 Jul 2026)"
+  - id: defence
+    title: "The claims-defence programme"
+    subtitle: "Blocks A and B: controls, boundaries and differentiators (12-13 Jul 2026)"
 
 era_divider:
   after: gen09
@@ -432,8 +435,10 @@ generations:
       - label: "The mechanism read"
         quote: "with hard interception there is NO observable threat/geometry signal for the policy to condition on, so zero-shot generalisation had no mechanism to work through"
     lesson: >-
-      ZST requires map-conditioned, multi-instance training. This measured boundary is what
-      gen15 then removed.
+      The boundary gen15 then removed. (Read then as "give the policy the map"; the A2/A3
+      probes later reattributed the mechanism: what ZST-0 actually lacked was
+      multi-instance training and transferable route features, not the map observation
+      per se.)
     demo: chart
     artefact: models/runs/zst_step0.json
 
@@ -499,6 +504,10 @@ generations:
         quote: "the policy beats loss_det (policy ratio < loss_det ratio) on **17/18 (OD, seed) cells**"
       - label: "Small generalisation gap"
         quote: "Held-out and TRAIN ratios track (1.42-1.71), i.e. small generalisation gap: the policy is conditioning on the instance, not memorising"
+    lesson: >-
+      The pass stands unchanged. Its mechanism sentence ("give the policy the map and
+      transfer works") was later superseded by the A2/A3 probes: the hedge is carried by
+      geometry and multi-instance adversarial training, not per-edge map-reading.
     demo: live
     runs_dir: gen15_generalist
 
@@ -777,9 +786,14 @@ generations:
       - label: "The measurement"
         quote: >-
           So "adversarial training is what makes transfer work" is now a MEASUREMENT
+      - label: "Upgraded to n=3 by gen25"
+        ledger: experiments/gen25_dr_control.md
+        quote: "Cost-trained generalists transfer at 2.354 +/- 0.014 (n=3, spread 0.014: essentially deterministic), WORSE than an untrained network (~1.99)."
     lesson: >-
-      Map-conditioning alone transfers below random; the adversary is what teaches the
-      hedge. The named Obj-5 non-adversarial control now exists at the transfer level.
+      Cost training actively destroys transfer (it concentrates the fleet on the cheap,
+      predictable routes), and gen25 tightened this from one seed to three. The named
+      Obj-5 non-adversarial control now exists at the transfer level; gen25's DR arm
+      later sharpened the causal ingredient to best-response pressure specifically.
     demo: chart
     runs_dir: gen21_vanilla
 
@@ -800,9 +814,18 @@ generations:
         quote: "two rotation points now: Gdansk 1.68, Istanbul 1.88"
       - label: "The honest clause"
         quote: "The loss_det clause is mixed (4/6, 2/6, 3/6: Istanbul's mega-city grid has several thin-asymmetry ODs where loss_det/eq is only ~1.3-2.0, the whole-project thin-headroom pattern)"
+      - label: "The A7 restatement (binding): what this PASS may claim"
+        ledger: experiments/a6_a7_a8_completions.md
+        quote: "on the majority of Istanbul cells (11/18) the deployed policy does not beat the deterministic optimum"
+      - label: "The far end of the ladder, in gap-closure terms"
+        ledger: experiments/a6_a7_a8_completions.md
+        quote: "the far-end claims are randomisation-level protection, not calibrated hedging"
     lesson: >-
       The cross-city claim is now "transfers to whichever city is held out", not
-      "transfers to the one easy city we picked".
+      "transfers to the one easy city we picked". After A7's gap-closure restatement the
+      Istanbul rung is worded as "beats random-init; closes 0.20 of the
+      deterministic-to-equilibrium gap", which is protection by randomisation rather than
+      calibrated hedging.
     demo: live
     runs_dir: gen22_rotation
 
@@ -836,25 +859,196 @@ generations:
   - id: d3g
     chapter: expansion
     era: post-fix
-    title: "D3-on-Gdansk: the composite on unseen ground (poster exhibit)"
-    dates: "2026-07-11"
-    status: DONE
+    title: "D3-on-Gdansk: the composite on unseen ground, then its reliability check"
+    dates: "2026-07-11, A5 check 07-12"
+    status: DOWNGRADED
     question: >-
       Do the three pillars (ZST pricing, SBO search, the interdiction objective) compose
-      on a city the policy never trained on?
+      on a city the policy never trained on, and is the headline correlation seed-stable?
     ledger: experiments/d3_gdansk.md
     quotes:
       - label: "The surrogate on unseen ground"
         quote: "**Surrogate over the TRAINED generalist's exploitability, on the never-trained city: held-out Spearman 0.862.**"
       - label: "The loop"
         quote: "**SBO acquisition: median 32.5 evaluations to regret <= 0.01 vs random INF; median final regret 0.0000 vs random 0.0107.**"
-      - label: "The poster payload"
-        quote: "**policy-vs-oracle design-target rank correlation: 0.109** (vs 0.768 for the in-distribution D3)."
-      - label: "Why only this framework can price it"
-        quote: "the LP would re-solve the equilibrium and hand you a design that is near-irrelevant to how the zero-shot policy actually performs there"
+      - label: "The A5 reliability check: per-seed, as now mandated"
+        quote: "**0.109 (seed 0) / 0.443 (seed 1) / 0.433 (seed 2)**"
+      - label: "The downgrade"
+        quote: "the headline 0.109 was substantially a SEED-0 artefact; the honest cross-seed statement is \"policy-vs-oracle design-target correlation 0.11-0.44 on the unseen city, vs 0.768 in-distribution\": still a real gap, no longer a dramatic near-zero"
+      - label: "What survives, stated carefully"
+        quote: "two equally-good adversarially-trained policies induce materially different design rankings on an unseen theatre"
     lesson: >-
-      The deployed policy's operational landscape diverges from the equilibrium precisely
-      where it matters most, an unseen theatre; designing there requires the RL + surrogate
-      loop, not the LP abstraction.
+      The composite still composes (surrogate 0.862, loop finds the optimum), but the
+      dramatic near-zero correlation was seed-specific; the design landscape is
+      policy-INSTANCE-specific, which remains an argument for pricing the policy you will
+      actually deploy, reported per-seed with reliability disclosed.
     demo: text
     artefact: models/runs/d3_gdansk.json
+
+  # ---------------------------------------------------------------- defence
+
+  - id: gen24
+    chapter: defence
+    era: post-fix
+    title: "gen24: the LP-distillation control (the amortiser reckoning begins)"
+    dates: "2026-07-12"
+    status: REFRAMES
+    question: >-
+      Does supervised amortisation of the solver (same architecture, same instances,
+      imitate each training instance's equilibrium mixture) transfer as well as
+      adversarial self-play?
+    ledger: experiments/gen24_distill.md
+    quotes:
+      - label: "The primary fires for adversarial"
+        quote: "**PRIMARY (select-on-train): distill mean 2.068 +/- 0.063 > 1.88** => the pre-registered \"adversarial interaction contributes beyond label-fitting\" branch fires"
+      - label: "But the symmetric validation row reverses it"
+        quote: "Under the standard supervised recipe, **distillation transfers BETTER than the adversarial generalist (1.555 vs 1.761)** on this pool."
+      - label: "The self-stopping contrast (the mechanism)"
+        quote: "**adversarial self-play is self-stopping; supervised distillation is not.**"
+      - label: "The two-regime claim (binding for the storyline)"
+        quote: "below the enumeration wall, supervised distillation (labels available) is the better recipe; past it, only adversarial self-play can train, and it carries its transfer quality there label-free and self-stopped"
+    lesson: >-
+      The ZST act must not claim adversarial training is necessary for transfer where
+      labels exist; its unique value is label-freeness and self-stopping, which is exactly
+      the regime past the enumeration wall where labels cannot exist.
+    demo: chart
+    runs_dir: gen24_distill
+
+  - id: a2a3
+    chapter: defence
+    era: post-fix
+    title: "A2 + A3: does the generalist read the map, and does it survive intel error?"
+    dates: "2026-07-12"
+    status: REATTRIBUTES
+    question: >-
+      Is the zero-shot claim an artefact of the length-derived threat-map family, and does
+      the hedge survive corrupted threat intelligence?
+    ledger: experiments/zst_map_robustness.md
+    quotes:
+      - label: "Shuffled reality: the bar passed"
+        quote: "on 18 shuffled-reality cells the frozen generalist scores 1.80x those games' own equilibria vs random-init 2.19x, beating each game's deterministic optimum on 13/18"
+      - label: "Intel error: essentially total robustness"
+        quote: "fully shuffling the OBSERVED map while reality stays fixed costs +0.03 (1.71 -> 1.74); the strongest multiplicative noise costs +0.07"
+      - label: "But map-reading is NOT the mechanism"
+        quote: "an information-free observed map costs only +0.09 (1.71 -> 1.80, still far below random 1.99)"
+      - label: "The binding wording rule"
+        quote: "the generalist learns a geometry-informed, threat-robust calibrated hedge"
+    lesson: >-
+      Three findings in one probe: the transfer edge survives threat fields decorrelated
+      from geometry; the deployment does not depend on accurate threat intelligence; and
+      per-edge map-reading is not the mechanism. Every "conditions on the threat map"
+      sentence is retired, which also strengthens the ZST-vs-LP framing: the exact solver
+      needs the true instance model, the hedge keeps its edge with a wrong or absent map.
+    demo: text
+    artefact: models/runs/zst_map_robustness.json
+
+  - id: gen25
+    chapter: defence
+    era: post-fix
+    title: "gen25: the DR control and the vanilla control at n=3 (causality sharpened)"
+    dates: "2026-07-12/13"
+    status: CONTROL_CONFIRMS
+    question: >-
+      Is it best-response pressure, or mere threat exposure, that makes adversarial
+      training transfer? And does the vanilla control hold beyond one seed?
+    ledger: experiments/gen25_dr_control.md
+    quotes:
+      - label: "The vanilla control, now tight"
+        quote: "Cost-trained generalists transfer at 2.354 +/- 0.014 (n=3, spread 0.014: essentially deterministic), WORSE than an untrained network (~1.99)."
+      - label: "The DR branch fired"
+        quote: "BEST-RESPONSE pressure, not mere threat exposure, is causal for the adversarial arm's transfer."
+      - label: "The complete amortiser ladder"
+        quote: "distill+val 1.555 < retrieval 1.676 < adversarial 1.733 < DR 2.056 ~ uniform-stack 1.989 ~ random-init 1.99 < vanilla 2.354"
+      - label: "The coherent story"
+        quote: "among LABEL-FREE trainers, best-response adversarial self-play is the only one that beats doing nothing at all; the methods that match or beat it (distillation, retrieval) both consume train-side equilibrium labels, which stop existing past the enumeration wall"
+    lesson: >-
+      One incident on the way: the first launch was reaped by the harness at ~sortie 4500
+      (the gen05 lesson re-learned) and relaunched detached; truncated artefacts preserved,
+      never compared.
+    demo: chart
+    runs_dir: gen25_dr
+
+  - id: a6a7a8
+    chapter: defence
+    era: post-fix
+    title: "A6-A8: the retrieval baseline, the gap-closure ladder, the prevalence figure"
+    dates: "2026-07-12"
+    status: BOUNDS
+    question: >-
+      Does a trivial retrieval amortiser match the generalist; what does the transfer
+      ladder look like in calibration content rather than ratios; and how often does
+      calibrated mixing matter across the population of instances?
+    ledger: experiments/a6_a7_a8_completions.md
+    quotes:
+      - label: "A6: retrieval matches the trained generalist"
+        quote: "Nearest-training-instance equilibrium retrieval (mapped by cost rank; no test-side solve; labels on the 18 train instances only) lands at **1.676 = the trained generalist's own level**."
+      - label: "A7: the gap-closure decay"
+        quote: "**0.90 (trained) -> 0.83 -> 0.54 (held-out OD) -> 0.45 (held-out city) -> 0.20 (Istanbul) -> 0.04 (Kyiv)**: an honest, clean, figure-worthy decay"
+      - label: "A7: the far-end wording rule"
+        quote: "the far-end claims are randomisation-level protection, not calibrated hedging"
+      - label: "A8: prevalence"
+        quote: "**69% of high-connectivity ODs have det/eq >= 2** (material calibration headroom); **93% have uniform-stack >= 1.5x eq** (naive randomisation clearly suboptimal almost everywhere)"
+      - label: "A8: the cherry-picking answer"
+        quote: "the headline instances were screened to be favourable (top decile), from a population in which material headroom is the norm (69% at >= 2x), so the phenomenon is prevalent and the screen bought margin, not existence"
+    lesson: >-
+      The transferable content at this instance family is coarse (several cheap amortisers
+      reach 1.55-1.78), so the act's centre of gravity moves to label-freeness,
+      self-stopping and threat robustness; the gap-closure metric changes what may be said
+      at the far end of the ladder; and one figure answers the cherry-picking question.
+    demo: chart
+    figures: ["assets/transfer_gap_closure.png", "assets/prevalence.png"]
+    artefact: models/runs/a8_prevalence.json
+
+  - id: b1
+    chapter: defence
+    era: post-fix
+    title: "B1: is 'holistic, simultaneous' earned? The integration gap, measured"
+    dates: "2026-07-12"
+    status: PARTIAL
+    question: >-
+      Does joint optimisation over placement, fleet and hardening beat the classical
+      tier-by-tier decomposition at matched budget, priced by the frozen zero-shot
+      generalist on Gdansk?
+    ledger: experiments/b1_integration_gap.md
+    quotes:
+      - label: "The strict bar was not met"
+        quote: "**Against the pre-registered bar (>= 5% under BOTH actors): NOT MET** (0% under actor 0)."
+      - label: "The honest finding"
+        quote: "**The joint loop attained the TRUE optimum under both actors at budget 60; the classical tier-by-tier decomposition matched it under one actor and left 19.3% on the table under the other.**"
+      - label: "The Obj-4 wording, binding"
+        quote: "the joint loop is the safe default because which regime you are in depends on the deployed policy instance and cannot be known in advance"
+    lesson: >-
+      Echoes A5: the operational design landscape is policy-instance-specific. The tiers
+      largely decompose in value terms (placement rankings hardening-stable, Spearman
+      ~0.86), yet the sequential arm can still lose through search dynamics.
+    demo: text
+    artefact: models/runs/b1_integration_gap.json
+
+  - id: b3b4
+    chapter: defence
+    era: post-fix
+    title: "B3 + B4: the risk-aversion law and the multi-OD correlation gap"
+    dates: "2026-07-12"
+    status: LAW
+    question: >-
+      Is the mission objective "the objective where we win", and is a multi-OD game
+      (different destinations, shared corridors) worth building?
+    ledger: experiments/b3_b4_oracle.md
+    quotes:
+      - label: "The three-regime law"
+        quote: "the objective family has THREE regimes at K=1"
+      - label: "The thesis sentence"
+        quote: "the mission objective is not \"the objective where we win\": it is the unique member of the family in which the deterministic planner cannot escape by spreading"
+      - label: "The measured law"
+        quote: "The \"price of predictability\" curve is now measured, not asserted."
+      - label: "B4: the multi-OD gap"
+        quote: "**median correlation gap (v_indep - v_joint)/v_joint = 14.4%; >= 10% on 10/15 triples**"
+    lesson: >-
+      Intermediate thresholds (P of at least m lost, m >= 2) are DEGENERATE in favour of
+      determinism while the fleet fits on disjoint routes: a spread plan zeroes the
+      objective, so neither mixing nor calibration matters there; at N=5 the m=2 regime
+      re-enters. And correlated joint routing beats independent mixing by a real margin on
+      corridor-sharing triples, justifying the future multi-OD game.
+    demo: chart
+    figures: ["assets/b3_risk_spectrum.png"]
+    artefact: models/runs/b3_risk_spectrum.json

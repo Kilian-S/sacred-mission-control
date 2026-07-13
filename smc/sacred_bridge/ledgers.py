@@ -24,6 +24,7 @@ class Quote:
     label: str
     quote: str
     verified: bool
+    source: str = ""  # ledger path the quote is verified against (defaults to the entry's)
 
 
 @dataclass(frozen=True)
@@ -105,12 +106,13 @@ def load_narrative_index(
     gens: list[Generation] = []
     for g in raw.get("generations", []):
         ledger_rel = g["ledger"]
-        ledger_path = SACRED_ROOT / ledger_rel
         quotes = tuple(
             Quote(
                 label=q["label"],
                 quote=q["quote"],
-                verified=verify_quote(q["quote"], ledger_path),
+                verified=verify_quote(q["quote"],
+                                      SACRED_ROOT / q.get("ledger", ledger_rel)),
+                source=q.get("ledger", ledger_rel),
             )
             for q in g.get("quotes", [])
         )

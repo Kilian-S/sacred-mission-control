@@ -148,6 +148,69 @@ transfer_ladder:
       ledger: experiments/a2_graph_transfer.md
       quote: "**The generalist TIES a random-init network (2.40 vs 2.41) and beats no held-out OD.**"
 
+# The full bounded amortiser ladder on held-out Gdansk (Block A synthesis).
+# All seven values sit inside the one gen25 sentence; the equilibrium row from A6's table.
+amortiser_ladder:
+  era: post-fix
+  title: "Who transfers? Every amortiser on held-out Gdansk (select-on-train)"
+  ledger: experiments/gen25_dr_control.md
+  unit: "mean ratio to each OD's own equilibrium (lower is better)"
+  shared_quote: "distill+val 1.555 < retrieval 1.676 < adversarial 1.733 < DR 2.056 ~ uniform-stack 1.989 ~ random-init 1.99 < vanilla 2.354"
+  rows:
+    - arm: distill
+      label: "LP distillation + val stop (labels needed)"
+      value: 1.555
+      labelled: true
+    - arm: retrieval
+      label: "Nearest-instance retrieval (labels needed)"
+      value: 1.676
+      labelled: true
+    - arm: sacred
+      label: "Adversarial self-play (label-free)"
+      value: 1.733
+      labelled: false
+    - arm: uniform
+      label: "Uniform-stack heuristic"
+      value: 1.989
+      labelled: false
+    - arm: random_init
+      label: "Random-init network"
+      value: 1.99
+      labelled: false
+    - arm: dr
+      label: "Domain randomisation (exposure, no pressure)"
+      value: 2.056
+      labelled: false
+    - arm: vanilla
+      label: "Cost-trained generalist (gen21/25)"
+      value: 2.354
+      labelled: false
+    - arm: equilibrium
+      label: "Equilibrium (per-OD oracle)"
+      value: 1.000
+      quote: "| equilibrium | 1.000 |"
+      ledger: experiments/a6_a7_a8_completions.md
+
+# The A7 gap-closure decay: fraction of the deterministic-to-equilibrium gap closed.
+gap_closure_ladder:
+  era: post-fix
+  ledger: experiments/a6_a7_a8_completions.md
+  shared_quote: "**0.90 (trained) -> 0.83 -> 0.54 (held-out OD) -> 0.45 (held-out city) -> 0.20 (Istanbul) -> 0.04 (Kyiv)**: an honest, clean, figure-worthy decay"
+  unit: "headroom-weighted gap closure (1.0 = equilibrium play, 0 = no better than the deterministic optimum)"
+  rungs:
+    - label: "Trained instance, multi-convoy (gen14)"
+      value: 0.90
+    - label: "Trained instance, single-convoy (gen14)"
+      value: 0.83
+    - label: "Held-out OD, same graph (gen15)"
+      value: 0.54
+    - label: "Held-out city, Gdansk (gen16)"
+      value: 0.45
+    - label: "Rotation, Istanbul (gen22)"
+      value: 0.20
+    - label: "Whole-city Kyiv scale row"
+      value: 0.04
+
 gen19_ladder:
   era: post-fix
   ledger: experiments/gen19_b1lite1.md
@@ -184,26 +247,62 @@ quote_cards:
         - label: "The mechanism"
           quote: "seeding a MIXED-STRATEGY learner (whose optimum is randomise-your-stack) with deterministic expert demonstrations biases it toward exploitable determinism, away from the equilibrium randomisation"
   obj4:
-    - title: "The composite on unseen ground: D3-on-Gdansk (2026-07-11)"
+    - title: "The composite on unseen ground: D3-on-Gdansk, per-seed after the A5 check"
       ledger: experiments/d3_gdansk.md
       items:
         - label: "The surrogate on unseen ground"
           quote: "**Surrogate over the TRAINED generalist's exploitability, on the never-trained city: held-out Spearman 0.862.**"
-        - label: "The poster payload"
-          quote: "**policy-vs-oracle design-target rank correlation: 0.109** (vs 0.768 for the in-distribution D3)."
-        - label: "Why only this framework can price it"
-          quote: "the LP would re-solve the equilibrium and hand you a design that is near-irrelevant to how the zero-shot policy actually performs there"
-  zst:
-    - title: "The causal control and the shifted regimes (2026-07-11)"
-      ledger: experiments/gen21_vanilla_transfer.md
+        - label: "Policy-vs-oracle design targets, PER SEED (the A5-mandated presentation)"
+          quote: "**0.109 (seed 0) / 0.443 (seed 1) / 0.433 (seed 2)**"
+        - label: "The reliability disclosure"
+          quote: "the headline 0.109 was substantially a SEED-0 artefact; the honest cross-seed statement is \"policy-vs-oracle design-target correlation 0.11-0.44 on the unseen city, vs 0.768 in-distribution\": still a real gap, no longer a dramatic near-zero"
+        - label: "What it still argues, stated carefully"
+          quote: "you must price THE policy you will deploy, not a class-average and not the equilibrium abstraction"
+    - title: "Is \"simultaneous\" earned? The B1 integration gap (2026-07-12)"
+      ledger: experiments/b1_integration_gap.md
       items:
-        - label: "The vanilla control (gen21)"
-          quote: "**Vanilla (travel-objective) generalist held-out-Gdansk best-checkpoint ratio 2.338 (final 2.575).**"
-        - label: "Worse than random: adversarial training is causal"
-          quote: "worse than a random-init network (2.34 vs 1.99)"
+        - label: "The honest finding"
+          quote: "**The joint loop attained the TRUE optimum under both actors at budget 60; the classical tier-by-tier decomposition matched it under one actor and left 19.3% on the table under the other.**"
+        - label: "The Obj-4 wording, binding"
+          quote: "a single surrogate-guided loop over the joint strategic-tactical-operational space finds the optimum at the same budget where the classical decomposition is only sometimes adequate (and 19% worse when not)"
+  zst:
+    - title: "The two-regime synthesis (gen24, 2026-07-12): what the act may claim"
+      ledger: experiments/gen24_distill.md
+      items:
+        - label: "Where labels exist, distillation wins"
+          quote: "**Where equilibrium labels exist (K=1, milliseconds per LP), supervised distillation with validation early stopping is the strongest transfer recipe measured (1.56x)**"
+        - label: "What adversarial self-play uniquely offers"
+          quote: "**Adversarial self-play reaches comparable transfer WITHOUT labels and WITHOUT any validation signal** (1.73 select-on-train, 1.76 val-stopped: the two agree because it does not overfit)"
+        - label: "The regime past the wall"
+          quote: "past the enumeration wall (K >= 4, A4's regime) labels do not exist and validation-by-oracle is unavailable, so self-play is the only trainer on the board"
+    - title: "The mechanism, reattributed (A2/A3, 2026-07-12)"
+      ledger: experiments/zst_map_robustness.md
+      items:
+        - label: "The binding wording rule"
+          quote: "the generalist learns a geometry-informed, threat-robust calibrated hedge: its zero-shot advantage persists on threat fields decorrelated from geometry (1.80x vs random 2.19x) and is insensitive to threat-map observation error (a fully wrong map costs +0.03), but per-edge map-reading is not the mechanism (an information-free map costs +0.09)"
+        - label: "Why this strengthens ZST-vs-LP"
+          quote: "an exact solver requires the true instance model at decision time; the trained hedge keeps its edge with a wrong or absent map"
+    - title: "Causality sharpened (gen21 n=3 + the DR control, gen25)"
+      ledger: experiments/gen25_dr_control.md
+      items:
+        - label: "The vanilla control, tight"
+          quote: "Cost-trained generalists transfer at 2.354 +/- 0.014 (n=3, spread 0.014: essentially deterministic), WORSE than an untrained network (~1.99)."
+        - label: "Exposure is not enough"
+          quote: "BEST-RESPONSE pressure, not mere threat exposure, is causal for the adversarial arm's transfer."
         - label: "Zero-shot K/N rows (gen16)"
           ledger: experiments/gen16_multicity.md
           quote: "at an UNSEEN adversary budget (K=2) it tightens to 1.29x (beats random, 5/6 beat loss_det) and at an UNSEEN fleet size (N=5) it holds at 1.79x (beats random 2.10, 6/6 beat loss_det)"
+  obj5:
+    - title: "Prevalence and the price of predictability (A8 + B3, 2026-07-12)"
+      ledger: experiments/a6_a7_a8_completions.md
+      items:
+        - label: "How often calibrated mixing matters"
+          quote: "**69% of high-connectivity ODs have det/eq >= 2** (material calibration headroom); **93% have uniform-stack >= 1.5x eq** (naive randomisation clearly suboptimal almost everywhere)"
+        - label: "The cherry-picking answer"
+          quote: "the headline instances were screened to be favourable (top decile), from a population in which material headroom is the norm (69% at >= 2x), so the phenomenon is prevalent and the screen bought margin, not existence"
+        - label: "B3: mission is not \"the objective where we win\""
+          ledger: experiments/b3_b4_oracle.md
+          quote: "the mission objective is not \"the objective where we win\": it is the unique member of the family in which the deterministic planner cannot escape by spreading, and the sweep maps exactly where that boundary sits (m relative to fleet-vs-disjoint-route capacity)"
 
 objectives_verbatim:
   source: THESIS_STORYLINE.md

@@ -239,8 +239,9 @@ class HistoryTab(QWidget, Exportable):
                     f"border-left: 3px solid {theme.BASELINE}; border-radius: 4px;"
                     "padding: 8px 10px;"
                 )
+                q_src = quote.source or g.ledger
                 src = QLabel(
-                    f"ledger: {g.ledger}"
+                    f"ledger: {q_src}"
                     + ("" if quote.verified else "   ⚠ quote could not be re-verified against the ledger")
                 )
                 src.setStyleSheet(
@@ -248,7 +249,7 @@ class HistoryTab(QWidget, Exportable):
                 )
                 src.setCursor(Qt.PointingHandCursor)
                 src.mousePressEvent = (
-                    lambda ev, lg=g.ledger, qq=quote.quote: self.open_ledger.emit(lg, qq)
+                    lambda ev, lg=q_src, qq=quote.quote: self.open_ledger.emit(lg, qq)
                 )
                 qc.layout_().addWidget(lab)
                 qc.layout_().addWidget(body)

@@ -234,7 +234,7 @@ class WatchPanel(QWidget, Exportable):
                 if (inst.city, inst.s, inst.t, inst.N, inst.K) == ("kaliningrad", "35", "159", 3, 1) \
                         and inst.band == (0.15, 0.95) and inst.k_extra == 8:
                     out.append(r)
-            elif r.kind == "generalist":
+            elif r.kind in ("generalist", "control"):
                 out.append(r)
             # history-aware actors belong to the duel mode, not static watch
         return out

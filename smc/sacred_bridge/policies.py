@@ -57,7 +57,7 @@ class ActorRef:
     family: str         # gen13_lock | gen14_evidence | gen15_generalist | gen16_multicity | gen19_b1lite1
     label: str
     ckpt: Path
-    kind: str           # specialist | generalist | history_aware
+    kind: str           # specialist | generalist | history_aware | control
     provenance: str     # short ledger pointer for captions
     ensemble: tuple[Path, ...] = ()
 
@@ -131,6 +131,38 @@ def _best_ckpt_of_b1lite(stem: str) -> tuple[Path, int] | None:
     return (cands[0], int(cands[0].stem.split("actor_ep")[1])) if cands else None
 
 
+def _valstop_ckpt_of_distill(seed: int) -> tuple[Path, int, tuple[Path, ...]] | None:
+    """gen24's ladder read (1.555) is the VAL-STOPPED selection scored with the
+    TAP window CENTRED on the selected step (verified: window {100, 200}
+    reproduces valstop.json's per-seed hold-out values exactly). Steps live in
+    valstop.json rows [seed, step, val_ratio, holdout_ratio]."""
+    rf = read_json(RUNS_DIR / "gen24_distill" / "valstop.json")
+    if not rf.ok:
+        return None
+    rows = (rf.data.get("distill") or {}).get("rows", [])
+    step = next((int(r[1]) for r in rows if int(r[0]) == seed), None)
+    if step is None:
+        return None
+    d = RUNS_DIR / "gen24_distill" / f"seed{seed}_ckpts"
+    window = tuple(p for p in (d / f"actor_ep{e}.pt"
+                               for e in (step - 100, step, step + 100))
+                   if p.is_file())
+    p = d / f"actor_ep{step}.pt"
+    return (p, step, window) if p.is_file() else None
+
+
+def _train_selected_ckpt_of_generalist(family: str, stem: str) -> tuple[Path, int] | None:
+    """Select-on-train (the standing deployable selection for the Block A arms):
+    the checkpoint at the eval with the lowest TRAIN-set mean ratio."""
+    rf = read_json(RUNS_DIR / family / f"{stem}.json")
+    if not rf.ok or not rf.data.get("history"):
+        return None
+    hist = rf.data["history"]
+    ep = int(min(hist, key=lambda row: row[1])[0])  # col 1 = train mean ratio
+    p = RUNS_DIR / family / f"{stem}_ckpts" / f"actor_ep{ep}.pt"
+    return (p, ep) if p.is_file() else None
+
+
 def discover_actors() -> list[ActorRef]:
     """Enumerate the post-fix live roster present on disk (no torch needed)."""
     out: list[ActorRef] = []
@@ -197,10 +229,36 @@ def discover_actors() -> list[ActorRef]:
     if hit:
         out.append(ActorRef(
             "gen21_seed0", "gen21_vanilla",
-            "Vanilla generalist gen21 (travel objective; the transfer CONTROL)",
-            hit[0], "generalist",
+            "CONTROL · vanilla generalist gen21 seed 0 (cost-trained; transfers below random)",
+            hit[0], "control",
             f"gen21_vanilla_transfer.md best-TAP ensemble @ sortie {hit[1]}",
             ensemble=hit[2]))
+    # Block A control arms (2026-07-12/13): the amortiser-ladder contenders
+    for seed in range(3):
+        hit = _valstop_ckpt_of_distill(seed)
+        if hit:
+            out.append(ActorRef(
+                f"gen24_seed{seed}", "gen24_distill",
+                f"CONTROL · LP-distilled gen24 seed {seed} (val-stopped; needs labels)",
+                hit[0], "control",
+                f"gen24_distill.md val-stopped centred-TAP window @ step {hit[1]} "
+                "(the ladder's 1.555 read)",
+                ensemble=hit[2]))
+    for seed in (1, 2):
+        hit = _train_selected_ckpt_of_generalist("gen25_dr", f"vanilla_seed{seed}")
+        if hit:
+            out.append(ActorRef(
+                f"gen25_vanilla_seed{seed}", "gen25_dr",
+                f"CONTROL · vanilla generalist gen25 seed {seed} (cost-trained)",
+                hit[0], "control",
+                f"gen25_dr_control.md select-on-train checkpoint @ sortie {hit[1]}"))
+    hit = _train_selected_ckpt_of_generalist("gen25_dr", "dr_seed0")
+    if hit:
+        out.append(ActorRef(
+            "gen25_dr_seed0", "gen25_dr",
+            "CONTROL · domain-randomisation gen25 (threat exposure, no best-response pressure)",
+            hit[0], "control",
+            f"gen25_dr_control.md select-on-train checkpoint @ sortie {hit[1]}"))
     return out
 
 

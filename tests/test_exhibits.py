@@ -61,6 +61,26 @@ def test_gen19_ladder(data):
         assert _value_in_quote(row["value"], g["quote"]), row
 
 
+def test_amortiser_ladder(data):
+    ladder = data["amortiser_ladder"]
+    default_ledger = SACRED_ROOT / ladder["ledger"]
+    shared = ladder["shared_quote"]
+    assert verify_quote(shared, default_ledger), "amortiser shared quote"
+    for row in ladder["rows"]:
+        quote = row.get("quote", shared)
+        ledger = SACRED_ROOT / row.get("ledger", ladder["ledger"])
+        if "quote" in row:
+            assert verify_quote(row["quote"], ledger), row["label"]
+        assert _value_in_quote(row["value"], quote), (row["arm"], row["value"])
+
+
+def test_gap_closure_ladder(data):
+    g = data["gap_closure_ladder"]
+    assert verify_quote(g["shared_quote"], SACRED_ROOT / g["ledger"])
+    for rung in g["rungs"]:
+        assert _value_in_quote(rung["value"], g["shared_quote"]), rung["label"]
+
+
 def test_quote_cards(data):
     """Every Objectives quote card is verbatim in the ledger it cites."""
     for exhibit, cards in data.get("quote_cards", {}).items():

@@ -56,6 +56,11 @@ STRATEGY_COLOURS = {
     "history_opt": VIOLET,
     "iid_eq": MAGENTA,
     "static_det": RED,
+    # Block A controls (identity in compare panels is carried by position + label;
+    # colour assignments recorded in DECISIONS.md)
+    "distill": GREEN,            # labels-needed amortiser (green family = supervised)
+    "retrieval": "#0e8a5f",      # labels-needed amortiser (bar charts only, never flown)
+    "dr": ORANGE,                # exposure-without-pressure control
 }
 
 # Provenance accents

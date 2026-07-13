@@ -18,7 +18,7 @@ pytestmark = pytest.mark.skipif(
 
 def test_index_loads():
     chapters, gens, div = load_narrative_index()
-    assert len(chapters) == 4
+    assert len(chapters) >= 5
     assert len(gens) >= 25
     assert div is not None
 

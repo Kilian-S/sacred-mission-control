@@ -56,6 +56,14 @@ _FAMILY_SPECS: dict[str, dict[str, Any]] = {
     "gen22": {"family": "gen22_rotation", "glob": "seed*.json", "kind": "generalist",
               "note": "held-out ISTANBUL ratio (solid) vs train ratio (dashed): transfer holds "
                       "to the hardest hold-out city"},
+    "gen24": {"family": "gen24_distill", "glob": "seed*.json", "kind": "generalist",
+              "note": "the overfitting signature: train ratio (dashed) keeps falling while "
+                      "held-out (solid) degrades past ~step 100-300; adversarial training "
+                      "never shows this shape"},
+    "gen25": {"family": "gen25_dr", "glob": "[dv]*_seed?.json", "kind": "generalist",
+              "note": "the controls: cost-trained vanilla (2 seeds) and domain randomisation, "
+                      "held-out ratio (solid) vs train (dashed); both sit at or above "
+                      "random-init level throughout"},
     "gen23": {"family": "gen23_c1", "glob": "*_seed*.json", "kind": "c1",
               "note": "ERB-seeded (ALNS demonstrations) vs cold arms: the seeding HURTS; "
                       "deterministic demos bias a mixed-strategy learner"},
