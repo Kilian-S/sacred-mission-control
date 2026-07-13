@@ -54,6 +54,9 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.documents_tab, "Documents")
 
         self.history_tab.open_ledger.connect(self._open_ledger)
+        if hasattr(self.objectives_tab, "open_od"):
+            self.objectives_tab.open_od.connect(self._open_od_in_playground)
+            self.objectives_tab.open_compare.connect(self._open_compare)
         if hasattr(self.home_tab, "go_to"):
             self.home_tab.go_to.connect(self.tabs.setCurrentIndex)
 
@@ -89,6 +92,17 @@ class MainWindow(QMainWindow):
             return PlaceholderTab("Objectives", "M4")
 
     # ------------------------------------------------------------- actions
+
+    def _open_od_in_playground(self, city: str, od: str) -> None:
+        self.tabs.setCurrentWidget(self.playground_tab)
+        if hasattr(self.playground_tab, "load_custom_od"):
+            self.playground_tab.load_custom_od(city, od)
+
+    def _open_compare(self) -> None:
+        self.tabs.setCurrentWidget(self.playground_tab)
+        if hasattr(self.playground_tab, "open_compare"):
+            self.playground_tab.open_compare(
+                ["sacred", "distill", "dr", "equilibrium"])
 
     def _open_ledger(self, relative: str, scroll_to: str) -> None:
         self.tabs.setCurrentWidget(self.documents_tab)

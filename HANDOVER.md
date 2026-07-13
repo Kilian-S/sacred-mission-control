@@ -105,3 +105,21 @@ SMC_SLOW_TESTS=1 .venv/bin/python -m pytest tests/ -q    # + 2 torch actor-ancho
 The historical smoke flakiness when piping output was almost certainly the worker
 lost-result race (fixed; see invariant 6). Writing the smoke's output to a file remains
 the tidy habit.
+
+## v1.1 (2026-07-13): the Blocks A+B fold-in + Compare mode
+
+Sacred's claims-defence programme (gen24/gen25, A2-A8, B1/B3/B4) is folded in; three
+standing claims were re-scoped on sacred's own binding wording rules (D3-Gdansk per-seed,
+the ZST two-regime synthesis, Obj-4's "simultaneous"). New app surface: the Playground
+COMPARE mode (synchronised small multiples, up to four protagonists incl. the Block-A
+control actors, one shared convergence chart), the OBJECTIVE selector (mission/threshold/
+linear, live re-solves reproducing B3's law; duel gated to mission; banked anchors hidden
+off-mission; the sortie engine accumulates the realised objective per family so running
+estimates converge to exact values under every objective), the amortiser ladder + A7
+gap-closure charts + live intel-error corruption in the ZST exhibit, the A8 prevalence
+explorer in Obj-5 (click a dot to open that OD in the Playground), and a live gap-closure
+line in the Watch readouts. Roster conventions per arm are in DECISIONS.md items 13-15;
+the gen24 centred-TAP-window discovery is documented there and in DATA_MAP §8. B2 (LLM
+benchmark) and C3 (HTML export) intentionally out of scope per Kilian, 2026-07-13; when
+B2 live results land, the natural home is a three-register ladder column beside the
+gen19 anchors in the duel view.

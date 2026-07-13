@@ -45,7 +45,7 @@ class SortieOutcome:
 @dataclass
 class RunningStats:
     n: int = 0
-    failures: int = 0
+    failures: float = 0.0  # accumulated realised objective value per sortie
     caught_convoys: int = 0
     convoys: int = 0
     history: list[float] = field(default_factory=list)  # running rate after each sortie
@@ -191,8 +191,17 @@ class SortieEngine:
             caught_edge.append(hit)  # type: ignore[arg-type]
 
         failed = any(caught)
+        # the realised OBJECTIVE value of this sortie, so the running mean converges
+        # to the exact expected value shown beside it under EVERY objective family
+        obj = getattr(inst, "objective", "mission")
+        if obj == "linear":
+            realised = sum(caught) / max(1, len(routes))
+        elif obj == "threshold":
+            realised = float(sum(caught) >= getattr(inst, "threshold_m", 1))
+        else:  # mission
+            realised = float(failed)
         self.stats.n += 1
-        self.stats.failures += int(failed)
+        self.stats.failures += realised
         self.stats.caught_convoys += sum(caught)
         self.stats.convoys += len(routes)
         self.stats.history.append(self.stats.rate)

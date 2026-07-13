@@ -35,6 +35,8 @@ class OracleInstance:
     N: int
     k_extra: int
     band: tuple[float, float] | None
+    objective: str              # mission | linear | threshold (B3's family)
+    threshold_m: int
     routes: list[list[str]]                 # node-id paths
     route_costs: np.ndarray                 # [R]
     route_vuln_worst: np.ndarray            # [R] worst edge vulnerability per route
@@ -115,6 +117,7 @@ def build_instance(
     k_extra: int = 8,
     band: tuple[float, float] | None = (0.15, 0.95),
     objective: str = "mission",
+    threshold_m: int = 1,
 ) -> OracleInstance:
     io, mo, mp = _oracle_mods()
     cm = load_city(city)
@@ -135,8 +138,8 @@ def build_instance(
     game = io.build_interdiction_game(G, s, t, K, k_extra=k_extra, weight="w",
                                       intercept_fn=intercept_fn)
     sol = io.solve(game)
-    msol = mo.solve_multiconvoy(game, N, objective)
-    occs, obj_m = mo.objective_matrix(game, N, objective)
+    msol = mo.solve_multiconvoy(game, N, objective, threshold_m)
+    occs, obj_m = mo.objective_matrix(game, N, objective, threshold_m)
 
     route_vuln_worst = np.array([
         max((vuln.get(e, 0.0) for e in re), default=0.0) for re in game.route_edges
@@ -144,6 +147,7 @@ def build_instance(
 
     inst = OracleInstance(
         city=city, s=s, t=t, K=K, N=N, k_extra=k_extra, band=band,
+        objective=objective, threshold_m=threshold_m,
         routes=[list(r) for r in game.routes],
         route_costs=np.asarray(game.travel_cost, dtype=float),
         route_vuln_worst=route_vuln_worst,

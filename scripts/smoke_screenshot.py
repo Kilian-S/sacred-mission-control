@@ -133,6 +133,28 @@ def main() -> int:
 
     shots.append(("home-final", lambda: win.tabs.setCurrentIndex(0)))
 
+    # v1.1: the compare mode and the objective spectrum
+    def compare_load():
+        win.tabs.setCurrentIndex(1)
+        pg.mode_combo.setCurrentIndex(3)
+    shots.append(("compare-load", compare_load))
+
+    def compare_batch():
+        win.tabs.setCurrentIndex(1)
+        pg.compare._run_batch()
+    shots.append(("compare-batch", compare_batch))
+    shots.append(("compare-batch2", compare_batch))
+
+    def objective_linear():
+        win.tabs.setCurrentIndex(1)
+        pg.mode_combo.setCurrentIndex(0)
+        pg.objective_combo.setCurrentIndex(2)  # risk-neutral; debounce rebuilds
+    shots.append(("objective-linear", objective_linear))
+
+    def objective_restore():
+        pg.objective_combo.setCurrentIndex(0)  # back to mission
+    shots.append(("objective-mission-restore", objective_restore))
+
     # ready predicates: shoot only once the step's asynchronous work landed
     def _duel_loaded():
         d = win.playground_tab.duel
@@ -143,8 +165,31 @@ def main() -> int:
         return ex.eval_btn.isEnabled() and ("Generalist" in ex.result_label.text()
                                             or "failed" in ex.zst_label.text())
 
+    def _compare_settled():
+        c = win.playground_tab.compare
+        arms = list(c._arms.values())
+        return (len(arms) > 0 and not any(a.status == "loading" for a in arms)
+                and len(c._ready_arms()) >= 2)
+
+    def _compare_batched():
+        c = win.playground_tab.compare
+        return (c.batch_btn.isEnabled()
+                and any(a.engine is not None and a.engine.stats.n > 0
+                        for a in c._ready_arms()))
+
+    def _objective_is(obj: str):
+        def check():
+            inst = win.playground_tab._inst
+            return inst is not None and inst.objective == obj
+        return check
+
     ready = {
         "playground": lambda: win.playground_tab._inst is not None,
+        "compare-load": _compare_settled,
+        "compare-batch": _compare_batched,
+        "compare-batch2": _compare_batched,
+        "objective-linear": _objective_is("linear"),
+        "objective-mission-restore": _objective_is("mission"),
         "duel-load": _duel_loaded,
         "duel-batch": lambda: win.playground_tab.duel.batch_btn.isEnabled(),
         "duel-batch2": lambda: win.playground_tab.duel.batch_btn.isEnabled(),

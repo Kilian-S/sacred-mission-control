@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import numpy as np
 import yaml
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QComboBox,
@@ -598,7 +598,9 @@ class Obj4Exhibit(ExhibitBase):
             "D3, the composite over the TRAINED generalist: held-out Spearman <b>0.959</b>; "
             "policy-target vs oracle-target rank correlation <b>0.768</b>: designing against "
             "the deployed policy differs measurably from designing against the equilibrium "
-            "abstraction, and only the RL + surrogate loop can do the former.")
+            "abstraction, and only the RL + surrogate loop can do the former. On the "
+            "never-trained city the correlation is <b>0.11-0.44 per seed</b> (the A5 "
+            "reliability check; per-seed presentation mandated, see the cards below).")
         d3_label.setWordWrap(True)
         c3.layout_().addWidget(d3_label)
         d3_src = QLabel("ledger: experiments/d3_composite.md · artefact: models/runs/d3_composite.json")
@@ -772,7 +774,10 @@ class Obj4Exhibit(ExhibitBase):
 # ===================================================================== Obj 5
 
 class Obj5Exhibit(ExhibitBase):
-    """The ladder raced live + the gen12 disruption sweep curves."""
+    """The ladder raced live + the gen12 disruption sweep curves + the A8
+    prevalence explorer (click an OD to open it in the Playground)."""
+
+    open_od_requested = Signal(str, str)  # (city, od)
 
     def build(self) -> None:
         if self._built:
@@ -800,12 +805,90 @@ class Obj5Exhibit(ExhibitBase):
         c2.layout_().addWidget(self.sweep_chart)
         self._draw_sweeps()
 
+        self._build_prevalence()
+        self.add_quote_cards("obj5")
+
         self._timer = QTimer(self)
         self._timer.setInterval(60)
         self._timer.timeout.connect(self._race_tick)
         run_in_background(self._prepare_worker, on_done=self._prepared,
                           on_fail=lambda tb: self.race_label.setText(
                               "preparation failed: " + tb.strip().splitlines()[-1]))
+
+    # ------------------------------------------------------- prevalence (A8)
+
+    def _build_prevalence(self) -> None:
+        c = self.card("Were the headlines cherry-picked? The A8 prevalence screen (160 ODs)")
+        self.prev_chart = ChartWidget(title="obj5-a8-prevalence", height=3.4, width=7.4)
+        c.layout_().addWidget(self.prev_chart)
+        self.prev_label = QLabel("Loading the prevalence artefact…")
+        self.prev_label.setWordWrap(True)
+        c.layout_().addWidget(self.prev_label)
+        run_in_background(self._prevalence_worker, on_done=self._prevalence_ready,
+                          on_fail=lambda tb: self.prev_label.setText(
+                              "artefact unavailable: models/runs/a8_prevalence.json"))
+
+    @staticmethod
+    def _prevalence_worker():
+        rf = read_json(RUNS_DIR / "a8_prevalence.json")
+        if not rf.ok:
+            raise RuntimeError("a8_prevalence.json unavailable")
+        return rf.data
+
+    def _prevalence_ready(self, data) -> None:
+        rows = data.get("rows", [])
+        heads = data.get("headlines", {})
+        if not rows:
+            self.prev_label.setText("artefact empty")
+            return
+        self._prev_rows = rows
+        ax = self.prev_chart.clear()
+        city_colours = {"kaliningrad": theme.BLUE, "gdansk": theme.AQUA,
+                        "east_london": theme.VIOLET, "istanbul": theme.MAGENTA}
+        for city, colour in city_colours.items():
+            xs = [r["det_eq"] for r in rows if r["city"] == city]
+            ys = [r["unif_eq"] for r in rows if r["city"] == city]
+            ax.scatter(xs, ys, s=22, c=colour, alpha=0.65, label=city, picker=5)
+        for od, h in heads.items():
+            ax.plot([h["det_eq"]], [h["unif_eq"]], "*", markersize=16,
+                    color=theme.STRATEGY_COLOURS["shortest_path"],
+                    markeredgecolor="white", zorder=5)
+            ax.annotate(f"headline {od}", xy=(h["det_eq"], h["unif_eq"]),
+                        xytext=(6, 6), textcoords="offset points", fontsize=10,
+                        color=theme.INK)
+        ax.axvline(2.0, color=theme.BASELINE, linestyle=":", linewidth=1.0)
+        ax.annotate("det/eq = 2 (material headroom)", xy=(2.0, 0.02),
+                    xycoords=("data", "axes fraction"), fontsize=9,
+                    color=theme.INK_MUTED, rotation=90, va="bottom", ha="right")
+        ax.set_xlabel("deterministic optimum / equilibrium (calibration headroom)")
+        ax.set_ylabel("uniform-stack / equilibrium")
+        ax.legend(fontsize=9)
+        self.prev_chart.set_caption(
+            "160 screened ODs, 40 per city, N=3 K=1 mission · artefact "
+            "models/runs/a8_prevalence.json (a6_a7_a8_completions.md; figure "
+            "assets/prevalence.png) · click a dot to open that OD in the Playground",
+            "ledger")
+        self.prev_chart.canvas.mpl_connect("pick_event", self._prevalence_picked)
+        self.prev_chart.redraw()
+        self.prev_label.setText(
+            "Every dot is an OD pair from the standing screen; the stars are the two "
+            "headline instances, top-decile BY the pre-registered screen design.")
+
+    def _prevalence_picked(self, event) -> None:
+        try:
+            colour = event.artist.get_facecolor()[0]
+        except Exception:
+            colour = None
+        # identify the row by matching offsets back to the data
+        offsets = event.artist.get_offsets()
+        i = int(event.ind[0])
+        x, y = float(offsets[i][0]), float(offsets[i][1])
+        best = min(self._prev_rows,
+                   key=lambda r: (r["det_eq"] - x) ** 2 + (r["unif_eq"] - y) ** 2)
+        self.prev_label.setText(
+            f"Selected {best['city']} {best['od']} · det/eq {best['det_eq']:.2f}, "
+            f"uniform-stack/eq {best['unif_eq']:.2f} · opening in the Playground…")
+        self.open_od_requested.emit(best["city"], best["od"])
 
     @staticmethod
     def _prepare_worker():
@@ -932,12 +1015,20 @@ class Obj5Exhibit(ExhibitBase):
 # ===================================================================== ZST
 
 class ZstExhibit(ExhibitBase):
-    """Zero-shot transfer: the frozen generalist routes a city it never saw."""
+    """Zero-shot transfer: the frozen generalist routes a city it never saw,
+    bounded by the Block A amortiser ladder, restated in gap-closure terms,
+    and stress-tested against intel error."""
+
+    open_compare_requested = Signal()
 
     def build(self) -> None:
         if self._built:
             return
         self._built = True
+        self._pol = None
+        self._inst_zst = None
+        self._intel_points = {}
+        self._rnd_ratio = None
 
         c = self.card("Route a never-seen city, zero-shot")
         row = QWidget()
@@ -987,7 +1078,172 @@ class ZstExhibit(ExhibitBase):
         self.ladder_chart = ChartWidget(title="zst-transfer-ladder", height=3.0, width=7.2)
         c2.layout_().addWidget(self.ladder_chart)
         self._draw_ladder()
+
+        c3 = self.card("Who transfers? The full amortiser ladder (Block A)")
+        self.amort_chart = ChartWidget(title="zst-amortiser-ladder", height=3.2, width=7.2)
+        c3.layout_().addWidget(self.amort_chart)
+        note = QLabel(
+            "The honest re-scope: methods that consume train-side equilibrium LABELS "
+            "(distillation, retrieval) match or beat the adversarial generalist here; among "
+            "LABEL-FREE trainers only best-response self-play beats doing nothing. Past the "
+            "enumeration wall (K ≥ 4) labels cannot exist, and self-play is the only trainer "
+            "on the board.")
+        note.setWordWrap(True)
+        c3.layout_().addWidget(note)
+        cmp_row = QWidget()
+        crl = QHBoxLayout(cmp_row)
+        crl.setContentsMargins(0, 0, 0, 0)
+        self.compare_btn = QPushButton("Fly these contenders side by side (Compare mode)")
+        self.compare_btn.setProperty("accent", True)
+        self.compare_btn.clicked.connect(self.open_compare_requested.emit)
+        crl.addWidget(self.compare_btn)
+        crl.addStretch(1)
+        c3.layout_().addWidget(cmp_row)
+        self._draw_amortiser()
+
+        c4 = self.card("The same ladder in calibration content: A7 gap closure")
+        self.gap_chart = ChartWidget(title="zst-gap-closure", height=2.8, width=7.2)
+        c4.layout_().addWidget(self.gap_chart)
+        self._draw_gap_closure()
+
+        c5 = self.card("Corrupt the observed threat map (the A3 intel-error design, live)")
+        intel_row = QWidget()
+        irl = QHBoxLayout(intel_row)
+        irl.setContentsMargins(0, 0, 0, 0)
+        irl.addWidget(QLabel("Shuffle fraction of the OBSERVED candidate vulnerabilities:"))
+        self.intel_slider = QSlider(Qt.Horizontal)
+        self.intel_slider.setRange(0, 100)
+        self.intel_slider.setValue(0)
+        self.intel_slider.setEnabled(False)
+        self.intel_slider.sliderReleased.connect(self._intel_run)
+        irl.addWidget(self.intel_slider, 1)
+        self.intel_btn = QPushButton("Corrupt and re-evaluate")
+        self.intel_btn.setEnabled(False)
+        self.intel_btn.clicked.connect(self._intel_run)
+        irl.addWidget(self.intel_btn)
+        c5.layout_().addWidget(intel_row)
+        self.intel_label = QLabel(
+            "Evaluate an OD above first; then corrupt what the policy SEES while reality "
+            "stays fixed. Reality (the true game) scores every row.")
+        self.intel_label.setWordWrap(True)
+        c5.layout_().addWidget(self.intel_label)
+        self.intel_chart = ChartWidget(title="zst-intel-error", height=2.6, width=7.2)
+        c5.layout_().addWidget(self.intel_chart)
+        intel_note = QLabel(
+            "The honest reading (zst_map_robustness.md): the hedge barely moves under a fully "
+            "wrong observed map, which is robustness to intel error AND evidence that per-edge "
+            "map-reading is not the mechanism; the hedge is geometry-informed.")
+        intel_note.setWordWrap(True)
+        c5.layout_().addWidget(intel_note)
+
         self.add_quote_cards("zst")
+
+    # ---------------------------------------------------- amortiser + gap charts
+
+    def _draw_amortiser(self) -> None:
+        ladder = _exhibit_data()["amortiser_ladder"]
+        rows = ladder["rows"]
+        ax = self.amort_chart.clear()
+        vals = [r["value"] for r in rows]
+        cols = [theme.STRATEGY_COLOURS.get(r["arm"], theme.BLUE) for r in rows]
+        ax.barh(range(len(rows)), vals, color=cols, height=0.62)
+        labels = [r["label"] + ("  🏷" if r.get("labelled") else "") for r in rows]
+        ax.set_yticks(range(len(rows)), labels, fontsize=10)
+        ax.invert_yaxis()
+        for i, v in enumerate(vals):
+            ax.text(v + 0.02, i, f"{v:.3f}" if v != 1.99 else "~1.99", va="center",
+                    fontsize=10, color=theme.INK_SECONDARY)
+        ax.axvline(1.0, color=theme.STRATEGY_COLOURS["equilibrium"], linestyle=":",
+                   linewidth=1.0)
+        ax.set_xlim(0.85, max(vals) * 1.12)
+        ax.set_xlabel(ladder["unit"])
+        self.amort_chart.set_caption(
+            "held-out Gdansk, select-on-train · 🏷 = consumes train-side equilibrium labels · "
+            "ledger: gen25_dr_control.md (the complete-ladder sentence; equilibrium row from "
+            "a6_a7_a8_completions.md)", "ledger")
+        self.amort_chart.redraw()
+
+    def _draw_gap_closure(self) -> None:
+        g = _exhibit_data()["gap_closure_ladder"]
+        rungs = g["rungs"]
+        ax = self.gap_chart.clear()
+        vals = [r["value"] for r in rungs]
+        ax.barh(range(len(rungs)), vals, color=theme.BLUE, height=0.6)
+        ax.set_yticks(range(len(rungs)), [r["label"] for r in rungs], fontsize=10)
+        ax.invert_yaxis()
+        for i, v in enumerate(vals):
+            ax.text(max(v, 0) + 0.015, i, f"{v:.2f}", va="center", fontsize=10,
+                    color=theme.INK_SECONDARY)
+        ax.axvline(0.0, color=theme.BASELINE, linewidth=1.0)
+        ax.set_xlim(-0.05, 1.02)
+        ax.set_xlabel(g["unit"])
+        self.gap_chart.set_caption(
+            "the ratio ladder restated as gap closure (a6_a7_a8_completions.md; figure "
+            "assets/transfer_gap_closure.png): the far end is randomisation-level protection, "
+            "not calibrated hedging", "ledger")
+        self.gap_chart.redraw()
+
+    # ---------------------------------------------------- intel error (live)
+
+    def _intel_run(self) -> None:
+        if self._pol is None or self._inst_zst is None:
+            self.intel_label.setText("Evaluate an OD above first.")
+            return
+        frac = self.intel_slider.value() / 100.0
+        self.intel_btn.setEnabled(False)
+        pol, inst = self._pol, self._inst_zst
+        run_in_background(self._intel_worker, pol, inst, frac,
+                          on_done=lambda res: self._intel_done(res, pol),
+                          on_fail=lambda tb: (self.intel_btn.setEnabled(True),
+                                              self.intel_label.setText(
+                                                  "failed: " + tb.strip().splitlines()[-1])))
+
+    @staticmethod
+    def _intel_worker(pol, inst, frac: float, seed: int = 0):
+        rng = np.random.default_rng(seed)
+        edges = list(inst.edge_vuln.keys())
+        vals = np.array([inst.edge_vuln[e] for e in edges])
+        k = int(round(frac * len(edges)))
+        override = {}
+        if k >= 2:
+            idx = rng.choice(len(edges), size=k, replace=False)
+            perm = rng.permutation(idx)
+            for i_from, i_to in zip(idx, perm):
+                override[edges[i_to]] = float(vals[i_from])
+        d = pol.route_distribution_observed(override) if override else pol.route_distribution()
+        occ = inst.route_dist_to_stacked_occ_dist(d)
+        _, e = inst.exploitability_occ(occ)   # scored under the TRUE game
+        return frac, e / inst.mc_value, seed
+
+    def _intel_done(self, res, pol) -> None:
+        self.intel_btn.setEnabled(True)
+        if pol is not self._pol:
+            return  # a new OD was evaluated meanwhile
+        frac, ratio, seed = res
+        self._intel_points[frac] = ratio
+        ax = self.intel_chart.clear()
+        xs = sorted(self._intel_points)
+        ys = [self._intel_points[x] for x in xs]
+        ax.plot([x * 100 for x in xs], ys, "o-", color=theme.BLUE, linewidth=1.8,
+                markersize=7, markeredgecolor="white")
+        if self._rnd_ratio is not None:
+            ax.axhline(self._rnd_ratio, color=theme.STRATEGY_COLOURS["random_init"],
+                       linestyle="--", linewidth=1.2)
+            ax.annotate(f"random-init {self._rnd_ratio:.2f}x", xy=(1.0, self._rnd_ratio),
+                        xycoords=("axes fraction", "data"), fontsize=9, ha="right",
+                        va="bottom", color=theme.STRATEGY_COLOURS["random_init"])
+        ax.axhline(1.0, color=theme.STRATEGY_COLOURS["equilibrium"], linestyle=":",
+                   linewidth=1.0)
+        ax.set_xlabel("% of observed candidate vulnerabilities shuffled (reality fixed)")
+        ax.set_ylabel("ratio to the TRUE equilibrium")
+        ax.set_ylim(0.9, max(2.3, (self._rnd_ratio or 2.0) + 0.2))
+        self.intel_chart.set_caption(
+            f"seed {seed} · gen16 policy on Gdansk {self._inst_zst.s}-{self._inst_zst.t} · "
+            "observation corrupted, reality fixed (the A3 design)", "live")
+        self.intel_chart.redraw()
+        self.intel_label.setText(
+            f"At {frac:.0%} shuffled the policy scores {ratio:.2f}x the true equilibrium "
+            "(true-map and corrupted rows share the banked checkpoint ensemble).")
 
     def _draw_ladder(self) -> None:
         rungs = _exhibit_data()["transfer_ladder"]["rungs"]
@@ -1036,10 +1292,10 @@ class ZstExhibit(ExhibitBase):
         occ_rnd = inst.route_dist_to_stacked_occ_dist(d_rnd)
         _, e_gen = inst.exploitability_occ(occ_gen)
         _, e_rnd = inst.exploitability_occ(occ_rnd)
-        return inst, d_gen, d_rnd, e_gen, e_rnd, refs[0]
+        return inst, d_gen, d_rnd, e_gen, e_rnd, refs[0], pol
 
     def _eval_done(self, result) -> None:
-        inst, d_gen, d_rnd, e_gen, e_rnd, ref = result
+        inst, d_gen, d_rnd, e_gen, e_rnd, ref, pol = result
         self.eval_btn.setEnabled(True)
         self.od_combo.setEnabled(True)
         self.zst_label.setText("")
@@ -1055,12 +1311,24 @@ class ZstExhibit(ExhibitBase):
             f"deterministic optimum {inst.mc_loss_det:.3f} (all computed live; policy = "
             f"{ref.provenance}). The generalist was trained on Kaliningrad, East London and "
             f"Istanbul; it has never seen this graph.")
+        # arm the intel-error demo on this OD/policy
+        self._pol = pol
+        self._inst_zst = inst
+        self._intel_points = {0.0: e_gen / inst.mc_value}
+        self._rnd_ratio = e_rnd / inst.mc_value
+        self.intel_slider.setEnabled(True)
+        self.intel_btn.setEnabled(True)
+        self.intel_label.setText(
+            f"Armed on Gdansk {inst.s}-{inst.t}: true-map ratio "
+            f"{e_gen / inst.mc_value:.2f}x. Move the slider and corrupt what the policy sees.")
 
 
 # ===================================================================== tab
 
 class ObjectivesTab(QWidget, Exportable):
     export_name = "objectives"
+    open_compare = Signal()        # ZST exhibit -> Playground compare mode
+    open_od = Signal(str, str)     # prevalence explorer -> Playground (city, od)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -1097,24 +1365,32 @@ class ObjectivesTab(QWidget, Exportable):
                 "fight the mixed-strategy optimum).")),
             ("Obj 4 · Surrogate-based optimisation", Obj4Exhibit(
                 quotes["obj4"],
-                "Met, now arguably the most complete objective: F3 regression, D1 acquisition "
-                "loop, D2 hardening tier, D3 composite over the trained policy, and D3-on-Gdansk "
-                "(the composite holds on a never-trained city).")),
+                "Met in its honest form: F3 regression, D1 acquisition loop, D2 hardening tier, "
+                "D3 composite over the trained policy; on the never-trained city the composite "
+                "holds per-seed (A5), and B1 measures \"simultaneous\": the joint loop is the "
+                "safe default (0-19% better than tier-by-tier, actor-contingent).")),
             ("Obj 5 · Evaluation vs baselines", Obj5Exhibit(
                 quotes["obj5"],
                 "Met strongly: both headline ladders on corrected code with n=10 CIs; disruption "
-                "curves in 10/10 cells; fairness rows pre-empting the natural attacks; and the "
-                "transfer-level vanilla control (gen21) making the adversarial claim causal.")),
+                "curves in 10/10 cells; fairness rows pre-empting the natural attacks; the "
+                "transfer-level controls (gen21/gen25) making the adversarial claim causal; and "
+                "A8 answering cherry-picking (69% of ODs have material headroom).")),
             ("ZST · The aim's promise", ZstExhibit(
                 quotes["zst"],
-                "Realised at the held-out-CITY level (gen16), rotated to the hardest hold-out "
-                "(Istanbul, gen22), extended to whole-city Kyiv scale, with the honest boundary "
-                "(A2) measured and then removed by multi-graph training.")),
+                "Realised, then honestly re-scoped by Block A: cheap label-consuming amortisers "
+                "match the transfer (retrieval 1.68, distillation 1.56), so the adversarial "
+                "generalist's distinction is label-freeness, self-stopping and threat "
+                "robustness, which is exactly the regime past the enumeration wall where "
+                "labels cannot exist. The hedge is geometry-informed, not map-reading.")),
         ]
         for label, widget in self._exhibits:
             item = QListWidgetItem(label)
             self.sidebar.addItem(item)
             self.stack.addWidget(widget)
+            if isinstance(widget, Obj5Exhibit):
+                widget.open_od_requested.connect(self.open_od)
+            if isinstance(widget, ZstExhibit):
+                widget.open_compare_requested.connect(self.open_compare)
         self.sidebar.currentRowChanged.connect(self._select)
         self.sidebar.setCurrentRow(0)
 

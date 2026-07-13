@@ -162,3 +162,23 @@ NEXT_STEPS_11-07-26.md, ROADMAP.md, SYSTEM.md. Git history of sacred = ready-mad
 | gen22 rotation generalist (Istanbul held out) | LIVE (ZST demos on Istanbul presets) |
 | gen23 ERB seeded-vs-cold | charts (Obj-3 exhibit + History) |
 | Kyiv | LIVE (5 screened OD presets; oracle solves ~0.6 s; gen16/gen15 generalists loadable) |
+
+## 8. The claims-defence wave (Blocks A+B, 2026-07-12/13; folded in v1.1)
+
+New run families: `gen24_distill/seed{0-2}.json` + ckpts stride 100 + `valstop.json`
+(rows [seed, step, val_ratio, holdout_ratio]; the ladder's 1.555 read = val-stopped
+selection scored as a centred TAP window, verified); `gen25_dr/{vanilla_seed1,
+vanilla_seed2,dr_seed0}.json` + ckpts stride 500 (select-on-train = argmin train ratio,
+@500 for all three; `*_attempt1.*` files are the reaped first launch, never compared).
+New top-level artefacts: `zst_map_robustness.json`, `a7_gap_closure.json` (list of act
+dicts), `a8_prevalence.json` ({rows: [{city, od, det_eq, unif_eq}], headlines}),
+`b1_integration_gap.json`, `b3_risk_spectrum.json`, `b4_multiod_probe.json`,
+`d3_gdansk_reliability.json`. New figures: `assets/transfer_gap_closure.png`,
+`assets/prevalence.png`, `assets/b3_risk_spectrum.png`.
+
+Demo-ability additions: gen24/gen25 control actors LIVE (roster, compare mode, ZST
+ladder); objective spectrum LIVE (mission/threshold/linear re-solves, reproduces the B3
+law exactly: 1.83 / degenerate 0-0 / 1.29 on the checked cells); intel-error corruption
+LIVE via `LoadedPolicy.route_distribution_observed` (identity-checked against the normal
+path); prevalence explorer LIVE from the A8 artefact (click-to-open in the Playground).
+B2 (LLM harness) intentionally not surfaced (no live results; out of scope per Kilian).

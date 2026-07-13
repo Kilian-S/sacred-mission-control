@@ -182,6 +182,7 @@ class WatchPanel(QWidget, Exportable):
             self.map.set_city(inst.city_map)
             self._city_loaded = inst.city
         self.map.show_instance(inst.routes, inst.edge_vuln, inst.s, inst.t)
+        self.run_label.setText("No sorties yet. Press Space.")
         self.alns_btn.setText("Compute ALNS")
         self.alns_btn.setEnabled(True)
         self._refresh_defenders()
@@ -394,21 +395,33 @@ class WatchPanel(QWidget, Exportable):
         inst = self._inst
         d = self._current_defender()
         a = self._current_attacker()
+        noun = {"mission": "mission failure",
+                "linear": "expected fraction of the fleet lost",
+                "threshold": f"P(at least {inst.threshold_m} convoys lost)"}.get(
+            inst.objective, "loss")
         self.lbl_det.setText(
             f"<b>loss_det = {inst.mc_loss_det:.3f}</b> · the best any DETERMINISTIC plan "
-            "can do against a committed attacker (what ALNS converges to)")
+            f"can do against a committed attacker ({noun}; what ALNS converges to)")
         self.lbl_mixed.setText(
             f"<b>loss_mixed = {inst.mc_value:.3f}</b> · the minimax equilibrium value "
             "(calibrated MIXED strategy)")
         if d is not None:
             e = self._engine.exploitability(d)
+            headroom = inst.mc_loss_det - inst.mc_value
+            if headroom > 1e-9:
+                gc = (inst.mc_loss_det - e) / headroom
+                gc_txt = (f" · closes <b>{gc:.0%}</b> of the deterministic-to-equilibrium "
+                          f"gap (the A7 metric; 100% = equilibrium play, ≤0% = no better "
+                          f"than the deterministic optimum)")
+            else:
+                gc_txt = " · no deterministic-to-equilibrium headroom on this cell"
             self.lbl_expl.setText(
-                f"<b>{e:.3f}</b> · worst-case mission failure of “{d.label}” "
-                "under the oracle best response")
+                f"<b>{e:.3f}</b> · worst-case {noun} of “{d.label}” "
+                "under the oracle best response" + gc_txt)
         if d is not None and a is not None:
             ev = self._engine.expected_value(d, a)
             self.lbl_expected.setText(
-                f"<b>{ev:.3f}</b> · exact expected mission failure of this matchup "
+                f"<b>{ev:.3f}</b> · exact expected {noun} of this matchup "
                 "(the running estimate converges here)")
 
     def _show_banked(self) -> None:
@@ -565,7 +578,7 @@ class WatchPanel(QWidget, Exportable):
         d, a = self._current_defender(), self._current_attacker()
         ev = self._engine.expected_value(d, a) if (d and a) else float("nan")
         self.run_label.setText(
-            f"<b>{st.rate:.3f}</b> mission-failure rate over {st.n} sorties "
+            f"<b>{st.rate:.3f}</b> mean realised objective over {st.n} sorties "
             f"(seed {self._engine.seed}) · exact value {ev:.3f}")
         self._redraw_convergence()
 

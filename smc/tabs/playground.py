@@ -1,12 +1,16 @@
-"""The Playground: pick an instance, then play with it in three modes.
+"""The Playground: pick an instance, then play with it in four modes.
 
 WATCH: strategy vs strategy, converging to solved values.
 DUEL: the within-episode pattern-of-life game (you or the gen19 policy vs the
 adaptive interdictor).
 AMBUSH: you are the interdictor; discover why mixing beats you.
+COMPARE: up to four protagonists (SACRED, the Block A controls, oracle arms)
+side by side on the same instance as synchronised small multiples.
 
-The instance picker (city, screened OD presets, N, K, threat band) is shared;
-each mode receives the solved OracleInstance. Space plays/pauses.
+The instance picker (city, screened OD presets, N, K, threat band, objective)
+is shared; each mode receives the solved OracleInstance. Space plays/pauses.
+The objective selector exposes B3's three-regime law live; the duel stays
+mission-only (the gen19 game is defined on the mission objective).
 """
 
 from __future__ import annotations
@@ -38,6 +42,7 @@ from ..widgets.cards import hrule
 from ..widgets.export import Exportable
 from ..workers import run_in_background
 from .pg_ambush import AmbushPanel
+from .pg_compare import ComparePanel
 from .pg_duel import DuelPanel
 from .pg_watch import WatchPanel
 
@@ -70,9 +75,11 @@ class PlaygroundTab(QWidget, Exportable):
         self.watch = WatchPanel()
         self.duel = DuelPanel()
         self.ambush = AmbushPanel()
+        self.compare = ComparePanel()
         self.stack.addWidget(self.watch)
         self.stack.addWidget(self.duel)
         self.stack.addWidget(self.ambush)
+        self.stack.addWidget(self.compare)
         split.addWidget(self.stack)
         split.setSizes([280, 1080])
 
@@ -100,6 +107,7 @@ class PlaygroundTab(QWidget, Exportable):
         self.mode_combo.addItem("Watch strategies play", 0)
         self.mode_combo.addItem("Pattern-of-life duel (you can play)", 1)
         self.mode_combo.addItem("You place the ambush", 2)
+        self.mode_combo.addItem("Compare protagonists side by side", 3)
         self.mode_combo.currentIndexChanged.connect(self._mode_changed)
         lay.addWidget(self.mode_combo)
 
@@ -136,6 +144,22 @@ class PlaygroundTab(QWidget, Exportable):
         self.k_warning.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 12px;")
         self.k_warning.hide()
         lay.addWidget(self.k_warning)
+
+        lay.addWidget(heading("Objective"))
+        self.objective_combo = QComboBox()
+        self.objective_combo.addItem(
+            "Mission: P(at least 1 lost) — the headline objective", ("mission", 1))
+        self.objective_combo.addItem(
+            "Threshold: P(at least 2 lost)", ("threshold", 2))
+        self.objective_combo.addItem(
+            "Risk-neutral: expected fraction lost", ("linear", 1))
+        self.objective_combo.currentIndexChanged.connect(self._objective_changed)
+        lay.addWidget(self.objective_combo)
+        self.objective_label = QLabel("")
+        self.objective_label.setWordWrap(True)
+        self.objective_label.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 12px;")
+        lay.addWidget(self.objective_label)
+        self._update_objective_label()
 
         lay.addWidget(heading("Threat band"))
         self.hard_check = QCheckBox("Hard interception (all-or-nothing)")
@@ -186,17 +210,48 @@ class PlaygroundTab(QWidget, Exportable):
     def _panel(self):
         return self.stack.currentWidget()
 
+    def _objective(self) -> tuple[str, int]:
+        data = self.objective_combo.currentData()
+        return data if data else ("mission", 1)
+
+    def _update_objective_label(self) -> None:
+        obj, _m = self._objective()
+        texts = {
+            "mission": "the unique objective the deterministic planner cannot escape "
+                       "by spreading (b3_b4_oracle.md)",
+            "threshold": "B3's law: degenerate in favour of determinism while the fleet "
+                         "fits disjoint routes (both values can be exactly 0); at N=5 it "
+                         "re-enters.",
+            "linear": "B3's law: a modest 1.3-1.8x gap deterministic spreading partly "
+                      "closes.",
+        }
+        self.objective_label.setText(texts.get(obj, ""))
+
+    def _objective_changed(self) -> None:
+        obj, _m = self._objective()
+        self._update_objective_label()
+        # the gen19 duel game is defined on the mission objective only
+        duel_item = self.mode_combo.model().item(1)
+        if duel_item is not None:
+            duel_item.setEnabled(obj == "mission")
+        if obj != "mission" and self.mode_combo.currentData() == 1:
+            self.mode_combo.setCurrentIndex(0)
+            self.status.setText(
+                "Duel mode needs the mission objective (the gen19 game is defined on it); "
+                "switched to Watch.")
+        self._schedule_rebuild()
+
     def _space(self) -> None:
         p = self._panel()
         if hasattr(p, "toggle_play"):
             p.toggle_play()
 
     def _mode_changed(self) -> None:
-        for p in (self.watch, self.duel):
+        for p in (self.watch, self.duel, self.compare):
             p.stop_play()
         self.stack.setCurrentIndex(self.mode_combo.currentData())
         if self._inst is not None:
-            self._panel().set_instance(self._inst, self.od_combo.currentData(),
+            self._panel().set_instance(self._inst, self._preset_for_panel(),
                                        self.seed_spin.value())
 
     def _seed_changed(self) -> None:
@@ -273,7 +328,7 @@ class PlaygroundTab(QWidget, Exportable):
             self._rebuild_pending = True
             return
         self._building = True
-        for panel in (self.watch, self.duel):
+        for panel in (self.watch, self.duel, self.compare):
             panel.stop_play()
         s, t = p["od"].split("-")
         K, N = self.k_spin.value(), self.n_spin.value()
@@ -286,10 +341,12 @@ class PlaygroundTab(QWidget, Exportable):
             return
         band = None if self.hard_check.isChecked() else (
             self.band_lo.value() / 100, self.band_hi.value() / 100)
-        self.status.setText(f"Solving {city} {s}-{t}  K={K} N={N} …")
+        obj, m = self._objective()
+        self.status.setText(f"Solving {city} {s}-{t}  K={K} N={N} ({obj}) …")
         t0 = time.perf_counter()
         run_in_background(
             oracle_bridge.build_instance, city, s, t, K, N, int(p.get("k_extra", 8)), band,
+            obj, m,
             on_done=lambda inst: self._instance_ready(inst, time.perf_counter() - t0),
             on_fail=self._instance_failed,
         )
@@ -305,10 +362,58 @@ class PlaygroundTab(QWidget, Exportable):
             self._rebuild_instance()
             return
         self._inst = inst
+        note = ""
+        if inst.objective != "mission":
+            note = " · anchors hidden: banked at the mission objective"
         self.status.setText(
             f"{inst.n_routes} routes · {len(inst.interdiction_sets)} interdiction sets · "
-            f"solved in {dt * 1000:.0f} ms")
-        self._panel().set_instance(inst, self.od_combo.currentData(), self.seed_spin.value())
+            f"solved in {dt * 1000:.0f} ms{note}")
+        self._panel().set_instance(inst, self._preset_for_panel(), self.seed_spin.value())
+
+    def _preset_for_panel(self) -> dict | None:
+        """Banked anchors are mission-objective ledger rows; off-mission they
+        must not show at all (honesty over decoration)."""
+        obj, _m = self._objective()
+        return self.od_combo.currentData() if obj == "mission" else None
+
+    # ------------------------------------------------------------- public API
+
+    def load_custom_od(self, city: str, od: str) -> None:
+        """Open a specific (city, od) instance, e.g. from the A8 prevalence
+        screen. Falls back to inserting a clearly-labelled temporary preset
+        when the OD is not a banked one; safe mid-build (debounced)."""
+        if self.objective_combo.currentIndex() != 0:
+            self.objective_combo.setCurrentIndex(0)  # anchors/presets are mission rows
+        for i in range(self.city_combo.count()):
+            if self.city_combo.itemData(i) == city:
+                if self.city_combo.currentIndex() != i:
+                    self.city_combo.setCurrentIndex(i)  # repopulates the OD combo
+                break
+        # drop any previous temporary entry
+        for i in range(self.od_combo.count() - 1, -1, -1):
+            data = self.od_combo.itemData(i)
+            if isinstance(data, dict) and data.get("temp"):
+                self.od_combo.removeItem(i)
+        for i in range(self.od_combo.count()):
+            data = self.od_combo.itemData(i)
+            if isinstance(data, dict) and data.get("od") == od:
+                self.od_combo.setCurrentIndex(i)
+                self._schedule_rebuild()
+                return
+        self.od_combo.insertItem(
+            0, f"{od} · from the prevalence screen (A8-sampled, not a banked preset)",
+            {"od": od, "k_extra": 8, "N": 3, "K": 1, "temp": True})
+        self.od_combo.setCurrentIndex(0)
+        self._schedule_rebuild()
+
+    def open_compare(self, contender_keys: list[str] | None = None) -> None:
+        """Switch to the compare mode, optionally pre-ticking contenders."""
+        if contender_keys:
+            self.compare.set_contenders(contender_keys)
+        idx = next((i for i in range(self.mode_combo.count())
+                    if self.mode_combo.itemData(i) == 3), None)
+        if idx is not None:
+            self.mode_combo.setCurrentIndex(idx)
 
     # ------------------------------------------------------------- export
 

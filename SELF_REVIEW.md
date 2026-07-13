@@ -131,3 +131,32 @@ the same day (commits 71f89b8..HEAD). Ranked as found:
     for charts first drawn at zero height inside collapsed scroll panes; cosmetic.
     Obj-1's attacker-options bars remain index-labelled (candidate next step in
     HANDOVER).
+
+## Round 4 (2026-07-13): the v1.1 fold-in of sacred's Blocks A+B
+
+Driver: the sacred agent completed the claims-defence programme (gen24/gen25, A2-A8,
+B1/B3/B4), three results of which REFRAME standing claims. Alignment fixes applied:
+
+1. [FIXED] D3-Gdansk still led with the retired 0.109 headline; now per-seed
+   (0.109/0.443/0.433) with the A5 reliability disclosure everywhere it appears.
+2. [FIXED] The ZST act's copy ("map-conditioned", "adversarial training is causal for
+   transfer") replaced with the two-regime synthesis and the A2/A3 wording rule
+   ("geometry-informed, threat-robust hedge"); gen22's Istanbul PASS reworded per A7.
+3. [FIXED] Obj-4's "simultaneous" now carries B1's honest form (joint = safe default,
+   0-19% actor-contingent).
+4. [VERIFIED] New roster arms reproduce their ledgers exactly: gen25 vanilla 2.351 and
+   DR 2.056 (select-on-train), gen24 distilled 1.5268 per-seed (val-stopped selection
+   scored as a centred TAP window {100, 200}: discovered by matching valstop.json, and
+   recorded in DECISIONS.md); the objective spectrum reproduces B3's law (1.83 /
+   degenerate 0-0 at P(>=2) N=3 / 1.29 at N=5); the intel-error path identity-checks
+   against the normal forward pass.
+5. [FIXED, found by the compare-mode fork] Watch's running label kept stale text across
+   instance rebuilds, and its readout nouns assumed the mission objective. Deeper find:
+   the sampled running estimate itself used mission semantics under EVERY objective, so
+   under linear/threshold it would NOT have converged to the exact value beside it
+   (§4.2). The engine now accumulates the realised objective value per family, with a
+   convergence regression test for the linear objective.
+6. [ACCEPTED] The compare panels and the attacker share orange for the DR control
+   (validated-palette ninth-series rule: no invented hues; identity via panel labels
+   and glyphs; DECISIONS.md item 12).
+7. Smoke extended to 32 shots (compare mode, objective spectrum); all inspected.

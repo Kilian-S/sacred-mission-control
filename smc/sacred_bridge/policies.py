@@ -327,11 +327,14 @@ class LoadedPolicy:
                 pyg = m["featurize_state"](obs, 0)
                 pyg.x = m["_clip_x"](pyg.x, node_dim)
                 pyg.edge_attr = m["_clip_ea"](pyg.edge_attr, edge_dim)
+                self._node_dim, self._edge_dim = node_dim, edge_dim
             self._actors.append(actor)
         if not self._actors:
             raise RuntimeError(f"no checkpoint members found for {ref.key}")
 
         self._pyg = pyg
+        self._obs = obs
+        self._m = m
         n2i = m["node_index_map"](obs)
         self._active_idx = n2i[obs["trucks"][0]["current_node"]]
 
@@ -342,6 +345,8 @@ class LoadedPolicy:
         def mm(x: np.ndarray) -> np.ndarray:
             return (x - x.min()) / (x.max() - x.min()) if x.max() > x.min() else np.zeros_like(x)
 
+        self._mm = mm
+        self._route_costs = c
         self._static_feats = np.stack([mm(c), mm(v)], axis=1)
 
     def route_distribution(self, window_freq: np.ndarray | None = None) -> np.ndarray:
@@ -368,6 +373,69 @@ class LoadedPolicy:
     @property
     def is_history_aware(self) -> bool:
         return self._feat_cols == 3
+
+    def route_distribution_observed(self, vuln_override: dict) -> np.ndarray:
+        """The A3 intel-error evaluation: REALITY stays fixed (score under the true
+        game outside this call); only the OBSERVED map is replaced. `vuln_override`
+        maps candidate edges (frozenset or 2-tuple) to observed vulnerabilities;
+        unlisted edges keep their true observed values. Rebuilds the observation's
+        edge-vulnerability column AND the per-route worst-vulnerability head feature
+        from the corrupted map, exactly as sacred's map_robustness_eval does."""
+        m, torch = self._m, self._torch
+        # normalise override keys to the env's observation key format
+        def keys_of(e):
+            uv = tuple(e) if not isinstance(e, tuple) else e
+            uv = tuple(str(x) for x in uv)
+            return [uv, (uv[-1], uv[0]), tuple(sorted(uv))]
+
+        obs_vuln = dict(self._obs.get("edge_vulnerability", {}))
+        override_flat: dict = {}
+        for e, p in vuln_override.items():
+            for k in keys_of(e):
+                override_flat[k] = float(p)
+        replaced = 0
+        for k in list(obs_vuln.keys()):
+            kk = tuple(str(x) for x in k)
+            if kk in override_flat:
+                obs_vuln[k] = override_flat[kk]
+                replaced += 1
+        if replaced == 0 and vuln_override:
+            raise RuntimeError("vuln_override matched no observation edges; key format mismatch")
+
+        obs2 = dict(self._obs)
+        obs2["edge_vulnerability"] = obs_vuln
+        pyg = m["featurize_state"](obs2, 0)
+        pyg.x = m["_clip_x"](pyg.x, self._node_dim)
+        pyg.edge_attr = m["_clip_ea"](pyg.edge_attr, self._edge_dim)
+
+        # per-route worst OBSERVED vulnerability from the corrupted map
+        game = self._env.game
+        v = np.array([
+            max((override_flat.get(tuple(sorted((str(a), str(b)))),
+                                   self._true_edge_p(a, b))
+                 for (a, b) in (tuple(e) for e in re)), default=0.0)
+            for re in game.route_edges
+        ])
+        feats2 = np.stack([self._mm(self._route_costs), self._mm(v)], axis=1)
+
+        acc = np.zeros(self._R)
+        with torch.no_grad():
+            for actor in self._actors:
+                if self._feat_cols == 2:
+                    actor.route_feats = torch.tensor(feats2, dtype=torch.float32)
+                elif self._feat_cols == 3:
+                    arr = np.concatenate([feats2, np.zeros((self._R, 1))], axis=1)
+                    actor.route_feats = torch.tensor(arr, dtype=torch.float32)
+                probs, _ = actor(pyg, self._active_idx, list(range(self._R)),
+                                 torch.zeros(self._R))
+                acc += probs.detach().cpu().numpy().astype(float).reshape(-1)
+        acc /= len(self._actors)
+        s = acc.sum()
+        return acc / s if s > 0 else np.full(self._R, 1.0 / self._R)
+
+    def _true_edge_p(self, a, b) -> float:
+        ev = self.inst.edge_vuln
+        return float(ev.get(frozenset({str(a), str(b)}), 0.0))
 
 
 def load_policy(ref: ActorRef, inst: OracleInstance) -> LoadedPolicy:

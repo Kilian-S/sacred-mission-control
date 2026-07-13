@@ -50,3 +50,28 @@ Recorded per §1 of MISSION_CONTROL_BRIEF.md. One entry per decision, dated.
 13. **Exhibit ledger quotes live in `data/exhibits.yaml` `quote_cards`**, rendered by
     `ExhibitBase.add_quote_cards`, so new-generation updates to the Objectives tab are data
     edits under the same verbatim-provenance test as everything else, not code edits.
+
+## 2026-07-13 (v1.1: the Blocks A+B fold-in)
+
+11. **Compare mode = synchronised small multiples, capped at four panels.** Overlaying
+    several mixtures on one map is illegible (routes share edges), so each protagonist
+    gets its own map panel at the same pan/zoom, same instance, same sortie index;
+    identity is carried three ways (panel position, header label, colour). Four panels
+    is the legibility cap; contenders beyond four are picked via the checkable menu.
+12. **Control-arm colours reuse the validated palette rather than inventing hues**
+    (the dataviz ninth-series rule): distilled = green (shares with the duel-only
+    "human" slot, never co-present), DR = orange (shares with the attacker glyphs,
+    disambiguated by the X/glow glyphs and panel labels), retrieval = the dark-aqua
+    sibling and appears only in bar charts (it is an algorithm, not a network).
+13. **Roster selection conventions follow each ledger's own citable read**: gen24
+    loads the VAL-STOPPED selection scored as a centred TAP window (verified to
+    reproduce valstop.json per-seed values exactly); gen25 arms and any future Block-A
+    arms load select-on-train (the standing deployable selection); gen15/16/22 keep
+    their banked select-on-test ensembles because their banked per-OD tables are
+    select-on-test and the app's exact-reproduction tests pin those numbers.
+14. **B2 (LLM benchmark) and C3 (HTML poster exhibit) are out of scope** per Kilian's
+    2026-07-13 decision; B2 has no live results yet and C3 belongs to the sacred agent.
+15. **The objective spectrum control** offers mission / threshold P(>=2) / risk-neutral
+    (B3's three regimes); the duel mode is gated to mission because the gen19 game is
+    defined on it, and banked anchors hide on non-mission objectives (they were banked
+    at mission).
