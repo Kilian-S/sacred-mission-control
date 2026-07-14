@@ -181,6 +181,7 @@ class DocumentsTab(QWidget, Exportable):
             self._forward.clear()
         self._current = path
         self.viewer.setMarkdown(text)
+        self._apply_reading_typography()
         self.viewer.moveCursor(QTextCursor.Start)
         try:
             rel = path.relative_to(docs_bridge.SACRED_ROOT)
@@ -194,6 +195,23 @@ class DocumentsTab(QWidget, Exportable):
         if scroll_to:
             self._scroll_to_text(scroll_to)
         self._nav_buttons()
+
+    def _apply_reading_typography(self) -> None:
+        """Reading comfort (render-side only; the .md files are never edited):
+        16px base type, 150% line height, generous margins."""
+        from PySide6.QtGui import QFont, QTextBlockFormat, QTextCursor as _QTC
+
+        doc = self.viewer.document()
+        f = QFont(self.viewer.font())
+        f.setPointSize(15)
+        doc.setDefaultFont(f)
+        doc.setDocumentMargin(28)
+        cursor = _QTC(doc)
+        cursor.select(_QTC.Document)
+        block = QTextBlockFormat()
+        block.setLineHeight(150, QTextBlockFormat.LineHeightTypes.ProportionalHeight.value)
+        block.setBottomMargin(6)
+        cursor.mergeBlockFormat(block)
 
     def open_by_name(self, relative: str, scroll_to: str = "") -> None:
         """Open a document by sacred-relative path (used by other tabs)."""

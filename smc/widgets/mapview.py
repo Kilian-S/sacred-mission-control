@@ -77,9 +77,13 @@ class MapView(QGraphicsView):
         self.setFrameShape(QGraphicsView.NoFrame)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        # items with ItemIgnoresTransformations (labels, the scale bar) leave
+        # trails under the default minimal update mode while panning
+        self.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
         self._scene = QGraphicsScene(self)
         self.setScene(self._scene)
         self.setMouseTracking(True)
+        self._build_zoom_chip()
 
         self._city: CityMap | None = None
         self._pos: dict[str, tuple[float, float]] = {}
@@ -96,9 +100,61 @@ class MapView(QGraphicsView):
 
     # ------------------------------------------------------------- zoom/pan
 
-    def wheelEvent(self, event):
-        factor = 1.25 if event.angleDelta().y() > 0 else 0.8
+    def _build_zoom_chip(self) -> None:
+        """A small +/−/fit control in the corner; plain scrolling no longer
+        zooms (it propagates to the page), Cmd+scroll and pinch still do."""
+        from PySide6.QtWidgets import QHBoxLayout, QPushButton, QWidget
+
+        self._chip = QWidget(self)
+        lay = QHBoxLayout(self._chip)
+        lay.setContentsMargins(4, 4, 4, 4)
+        lay.setSpacing(2)
+        for text, tip, fn in (("−", "Zoom out", lambda: self._zoom(0.8)),
+                              ("+", "Zoom in", lambda: self._zoom(1.25)),
+                              ("⤢", "Fit the whole view", self._fit_current)):
+            b = QPushButton(text)
+            b.setFixedSize(26, 26)
+            b.setToolTip(tip)
+            b.setStyleSheet(
+                f"QPushButton {{ background: {theme.SURFACE}; border: 1px solid "
+                f"{theme.GRID}; border-radius: 6px; padding: 0; font-size: 14px; }}"
+                f"QPushButton:hover {{ border-color: {theme.BASELINE}; }}")
+            b.clicked.connect(fn)
+            lay.addWidget(b)
+        self._chip.setStyleSheet("background: transparent;")
+        self._chip.raise_()
+
+    def _zoom(self, factor: float) -> None:
         self.scale(factor, factor)
+
+    def _fit_current(self) -> None:
+        if self._routes:
+            self.fit_routes()
+        else:
+            self.fit_all()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "_chip"):
+            self._chip.move(self.width() - self._chip.sizeHint().width() - 8,
+                            self.height() - self._chip.sizeHint().height() - 8)
+
+    def wheelEvent(self, event):
+        if event.modifiers() & (Qt.ControlModifier | Qt.MetaModifier):
+            factor = 1.25 if event.angleDelta().y() > 0 else 0.8
+            self.scale(factor, factor)
+            event.accept()
+        else:
+            event.ignore()  # let the page scroll; the chip/pinch/Cmd+scroll zoom
+
+    def event(self, ev):
+        # trackpad pinch on macOS
+        from PySide6.QtCore import QEvent
+        if ev.type() == QEvent.NativeGesture and \
+                ev.gestureType() == Qt.NativeGestureType.ZoomNativeGesture:
+            self.scale(1.0 + ev.value(), 1.0 + ev.value())
+            return True
+        return super().event(ev)
 
     # ------------------------------------------------------------- city
 
@@ -481,6 +537,41 @@ class MapView(QGraphicsView):
             pen.setCapStyle(Qt.RoundCap)
             line.setPen(pen)
             line.setZValue(51)
+        self.burst_label(dot, "Ambushed ✗", "#d03b3b")
+
+    def celebrate(self, dot: ConvoyDot) -> None:
+        """The convoy made it: a green pulse + 'Delivered' at the destination,
+        so success is as visible as failure (REDESIGN.md §2.7)."""
+        self.flash(dot, "#0ca30c")
+        self.burst_label(dot, "Delivered ✓", "#006300")
+
+    def burst_label(self, dot: ConvoyDot, text: str, colour: str) -> None:
+        """A short-lived floating outcome word at the dot's position."""
+        item = QGraphicsSimpleTextItem(text)
+        f = QFont(theme.FONT_FAMILY, 12)
+        f.setBold(True)
+        item.setFont(f)
+        item.setBrush(QBrush(QColor(colour)))
+        item.setPen(QPen(QColor("white"), 0.8))
+        item.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
+        item.setPos(dot.pos())
+        item.setZValue(70)
+        self._scene.addItem(item)
+        steps = {"n": 0}
+        timer = QTimer(self)
+
+        def tick():
+            steps["n"] += 1
+            k = steps["n"]
+            item.setOpacity(max(0.0, 1.0 - k / 26))
+            item.moveBy(0, 0)  # position is view-anchored; fade only
+            if k >= 26:
+                timer.stop()
+                self._scene.removeItem(item)
+                timer.deleteLater()
+
+        timer.timeout.connect(tick)
+        timer.start(45)
 
     # ------------------------------------------------------------- input modes
 

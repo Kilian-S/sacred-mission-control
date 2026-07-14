@@ -8,6 +8,8 @@
 presets:
   kaliningrad:
     - od: "35-159"
+      human: "The proving ground"
+      story: "Three convoys cross Kaliningrad while a hidden ambusher waits. This is where the headline results were measured."
       label: "35-159 · THE post-fix headline instance"
       k_extra: 8
       N: 3
@@ -32,6 +34,8 @@ presets:
               value: 0.206
               quote: "| equilibrium (loss_mixed) | 0.206 |"
     - od: "62-97"
+      human: "The old proving ground"
+      story: "The earlier testing ground; its trained results predate the 9 July bug fix and are shown for history only."
       label: "62-97 · the pre-fix headline instance (gen09)"
       k_extra: 8
       N: 3
@@ -55,6 +59,8 @@ presets:
               value: 0.216
               quote: "| equilibrium (loss_mixed) | 0.216 |"
     - od: "33-71"
+      human: "The lone-convoy run"
+      story: "One convoy, eleven possible routes, one ambusher. The single-convoy headline was measured here."
       label: "33-71 · the single-convoy headline instance"
       k_extra: 8
       N: 1
@@ -70,6 +76,8 @@ presets:
               value: 0.276
               quote: "Ladder (TAP, pooled): shortest 1.000 > vanilla 0.480 > uniform 0.455 > **sacred 0.276** >> equilibrium 0.167."
     - od: "110-135"
+      human: "The three-corridor crossing"
+      story: "Only three genuinely different ways across, so even random routing stays predictable."
       label: "110-135 · B2-S / the ZST-0 target"
       k_extra: 8
       N: 1
@@ -85,64 +93,88 @@ presets:
               value: 0.333
               quote: "shortest 1.000, uniform 0.818, equilibrium 0.333"
     - od: "72-42"
+      human: "Unseen crossing 1 (the difficult one)"
+      story: "Never used in training; the hardest of the six test crossings."
       label: "72-42 · gen15 zero-shot test OD (the difficult one)"
       k_extra: 8
       N: 3
       K: 1
       note: "Held-out OD of the gen15 generalist; the one OD one seed missed."
     - od: "103-27"
+      human: "Unseen crossing 2"
+      story: "Never used in training."
       label: "103-27 · gen15 zero-shot test OD"
       k_extra: 8
       N: 3
       K: 1
     - od: "66-230"
+      human: "Unseen crossing 3"
+      story: "Never used in training."
       label: "66-230 · gen15 zero-shot test OD"
       k_extra: 8
       N: 3
       K: 1
     - od: "219-19"
+      human: "Unseen crossing 4"
+      story: "Never used in training."
       label: "219-19 · gen15 zero-shot test OD"
       k_extra: 8
       N: 3
       K: 1
     - od: "64-11"
+      human: "Unseen crossing 5"
+      story: "Never used in training."
       label: "64-11 · gen15 zero-shot test OD"
       k_extra: 8
       N: 3
       K: 1
     - od: "189-11"
+      human: "Unseen crossing 6"
+      story: "Never used in training."
       label: "189-11 · gen15 zero-shot test OD"
       k_extra: 8
       N: 3
       K: 1
   gdansk:
     - od: "249-95"
+      human: "Gdansk crossing 1"
+      story: "The AI never saw this city in training."
       label: "249-95 · gen16 zero-shot city OD"
       k_extra: 8
       N: 3
       K: 1
       note: "Gdansk was held out entirely in gen16; these six ODs are the zero-shot test set."
     - od: "106-173"
+      human: "Gdansk crossing 2"
+      story: "The AI never saw this city in training."
       label: "106-173 · gen16 zero-shot city OD"
       k_extra: 8
       N: 3
       K: 1
     - od: "351-210"
+      human: "Gdansk crossing 3"
+      story: "The AI never saw this city in training."
       label: "351-210 · gen16 zero-shot city OD"
       k_extra: 8
       N: 3
       K: 1
     - od: "146-296"
+      human: "Gdansk crossing 4"
+      story: "The AI never saw this city in training."
       label: "146-296 · gen16 zero-shot city OD"
       k_extra: 8
       N: 3
       K: 1
     - od: "275-72"
+      human: "Gdansk crossing 5"
+      story: "The AI never saw this city in training."
       label: "275-72 · gen16 zero-shot city OD"
       k_extra: 8
       N: 3
       K: 1
     - od: "193-278"
+      human: "Gdansk crossing 6"
+      story: "The AI never saw this city in training."
       label: "193-278 · gen16 zero-shot city OD (the 0.01-miss cell)"
       k_extra: 8
       N: 3
@@ -184,42 +216,58 @@ presets:
       K: 1
   east_london:
     - od: "14-289"
+      human: "Training crossing 1"
+      story: "One of the crossings the AI trained on in East London."
       label: "14-289 · gen16 training OD"
       k_extra: 8
       N: 3
       K: 1
     - od: "386-557"
+      human: "Training crossing 2"
+      story: "One of the crossings the AI trained on in East London."
       label: "386-557 · gen16 training OD"
       k_extra: 8
       N: 3
       K: 1
     - od: "329-137"
+      human: "Training crossing 3"
+      story: "One of the crossings the AI trained on in East London."
       label: "329-137 · gen16 training OD"
       k_extra: 8
       N: 3
       K: 1
     - od: "321-155"
+      human: "Training crossing 4"
+      story: "One of the crossings the AI trained on in East London."
       label: "321-155 · gen16 training OD"
       k_extra: 8
       N: 3
       K: 1
   istanbul:
     - od: "546-20"
+      human: "Training crossing 1"
+      story: "One of the crossings the AI trained on in Istanbul."
       label: "546-20 · gen16 training OD"
       k_extra: 8
       N: 3
       K: 1
     - od: "163-363"
+      human: "Training crossing 2"
+      story: "One of the crossings the AI trained on in Istanbul."
       label: "163-363 · gen16 training OD"
       k_extra: 8
       N: 3
       K: 1
     - od: "323-274"
+      human: "Training crossing 3"
+      story: "One of the crossings the AI trained on in Istanbul."
       label: "323-274 · gen16 training OD"
       k_extra: 8
       N: 3
       K: 1
     - od: "1207-757"
+      human: "Training crossing 4"
+      story: "One of the crossings the AI trained on in Istanbul."
       label: "1207-757 · gen16 training OD"
       k_extra: 8
       N: 3

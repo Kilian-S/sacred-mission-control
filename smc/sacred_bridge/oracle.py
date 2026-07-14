@@ -100,7 +100,8 @@ class OracleInstance:
         costs = self.route_costs
         best = (None, np.inf, 0.0)
         for T in np.geomspace(0.05, 50.0, 40):
-            d = np.exp(-costs / T)
+            # log-space shift: exact, and never underflows to an all-zero sum
+            d = np.exp(-(costs - costs.min()) / T)
             d = d / d.sum()
             _, e = self.exploitability_routes(d)
             if e < best[1]:

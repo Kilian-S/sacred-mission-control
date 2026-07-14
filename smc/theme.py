@@ -97,10 +97,10 @@ def build_qss() -> str:
     QTabBar::tab:hover:!selected {{ color: {INK}; }}
 
     QListWidget, QTreeView, QListView {{
-        background: {SURFACE}; border: 1px solid {GRID}; border-radius: 8px;
-        outline: none; padding: 4px;
+        background: {SURFACE}; border: 1px solid {GRID}; border-radius: 12px;
+        outline: none; padding: 8px;
     }}
-    QListWidget::item, QTreeView::item {{ padding: 5px 6px; border-radius: 5px; }}
+    QListWidget::item, QTreeView::item {{ padding: 8px 10px; border-radius: 8px; }}
     QListWidget::item:selected, QTreeView::item:selected {{
         background: {SELECTION_BG}; color: {INK};
     }}
@@ -115,20 +115,25 @@ def build_qss() -> str:
     QScrollBar::handle:horizontal {{ background: {BASELINE}; border-radius: 4px; min-width: 30px; }}
 
     QPushButton {{
-        background: {SURFACE}; border: 1px solid {BASELINE}; border-radius: 7px;
-        padding: 6px 14px; color: {INK};
+        background: transparent; border: 1px solid {GRID}; border-radius: 10px;
+        padding: 8px 16px; color: {INK};
     }}
-    QPushButton:hover {{ border-color: {BLUE}; color: {BLUE}; }}
+    QPushButton:hover {{ background: {SURFACE}; border-color: {BASELINE}; }}
     QPushButton:pressed {{ background: {SELECTION_BG}; }}
     QPushButton:disabled {{ color: {INK_MUTED}; border-color: {GRID}; }}
     QPushButton[accent="true"] {{
         background: {BLUE}; border: 1px solid {BLUE}; color: white; font-weight: 600;
+        padding: 9px 20px;
     }}
     QPushButton[accent="true"]:hover {{ background: #1c5cab; color: white; }}
+    QPushButton[quiet="true"] {{
+        border: none; color: {INK_SECONDARY}; padding: 4px 8px; text-align: left;
+    }}
+    QPushButton[quiet="true"]:hover {{ color: {INK}; background: transparent; }}
 
     QComboBox {{
-        background: {SURFACE}; border: 1px solid {BASELINE}; border-radius: 7px;
-        padding: 4px 10px;
+        background: {SURFACE}; border: 1px solid {BASELINE}; border-radius: 10px;
+        padding: 6px 12px;
     }}
     QComboBox QAbstractItemView {{
         background: {SURFACE}; border: 1px solid {GRID};
@@ -147,14 +152,21 @@ def build_qss() -> str:
         background: {INK}; color: {SURFACE}; border: none; padding: 5px 8px;
         font-size: 14px;
     }}
-    QLabel[caption="true"] {{ color: {INK_MUTED}; font-size: 13px; }}
-    QLabel[h1="true"] {{ font-size: 28px; font-weight: 700; }}
-    QLabel[h2="true"] {{ font-size: 20px; font-weight: 600; }}
-    QLabel[h3="true"] {{ font-size: 16px; font-weight: 600; }}
+    QLabel[caption="true"] {{ color: {INK_MUTED}; font-size: 12px; }}
+    QLabel[fineprint="true"] {{ color: {INK_MUTED}; font-size: 12px; }}
+    QLabel[h1="true"] {{ font-size: 30px; font-weight: 700; letter-spacing: -0.3px; }}
+    QLabel[h2="true"] {{ font-size: 20px; font-weight: 650; }}
+    QLabel[h3="true"] {{ font-size: 15px; font-weight: 650; }}
+    QLabel[hero="true"] {{ font-size: 40px; font-weight: 700; letter-spacing: -0.5px; }}
     QFrame[card="true"] {{
-        background: {SURFACE}; border: 1px solid {GRID}; border-radius: 10px;
+        background: {SURFACE}; border: 1px solid #eceae4; border-radius: 12px;
     }}
     QStatusBar {{ background: {PAGE}; color: {INK_MUTED}; }}
+    QToolButton[disclosure="true"] {{
+        border: none; color: {INK_MUTED}; font-size: 12px; padding: 2px 4px;
+        text-align: left;
+    }}
+    QToolButton[disclosure="true"]:hover {{ color: {INK_SECONDARY}; }}
     """
 
 
