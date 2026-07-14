@@ -1192,7 +1192,7 @@ class Obj5Exhibit(ExhibitBase):
         _pct_axis(ax)
         ax.set_ylim(-0.03, 1.03)
         self.race_chart.set_caption(
-            "computed live · solid lines = missions being flown right now; dotted = each "
+            "solid lines = missions being flown right now; dotted = each "
             "plan's exact worst case; SACRED's recorded result was 25.6% "
             "(gen14_evidence.md) · fixed seeds per plan", "live")
         self.race_chart.redraw()

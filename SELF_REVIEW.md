@@ -160,3 +160,45 @@ B1/B3/B4), three results of which REFRAME standing claims. Alignment fixes appli
    (validated-palette ninth-series rule: no invented hues; identity via panel labels
    and glyphs; DECISIONS.md item 12).
 7. Smoke extended to 32 shots (compare mode, objective spectrum); all inspected.
+
+## Round 5 (2026-07-14): the humanist redesign (v2.0) + stranger-test audit
+
+Kilian's v1.1 critique: too much technical jargon, ledger-note reliance, and a
+"Windows XP" Playground; the definition of done became "a stranger with a high-school
+education understands each screen in thirty seconds." Rebuilt per REDESIGN.md.
+
+Built: a single-source lexicon (one metric phrase "chance the mission fails", human
+names for every strategy/enemy/scenario/objective, percentages on human surfaces); a
+humanist widget kit (hero numbers, goalpost bars, outcome strips, map legends, a
+collapsed "From the record" drawer that keeps every ledger quote one click away); a
+side-by-side planner-vs-SACRED Home hero; a four-card Playground landing with a shared
+scenario bar, an advanced "Change the rules" drawer, and three-step coach tutorials;
+story-first Objectives (map-based base-siting, battery-bar transfer decay, one-chart
+training default); a plain-words lead on every History card; larger, 150%-line-height
+Documents rendering (no .md edits); and the bug fixes (map pan artefacts, zoom chip,
+Objectives scroll, the exp-underflow oracle warning, capitalisation).
+
+Stranger-test audit against §0 of REDESIGN.md, every screen walked against fresh
+screenshots:
+
+| screen | the one question | verdict |
+|---|---|---|
+| Home | what is this, what is it better at? | PASS: side-by-side hero, 70% vs 25% worst-case tallies, "SACRED has no habit" |
+| Playground landing | what can I do? | PASS: four plain cards, one line each |
+| Watch | who defends, who attacks, who wins? | PASS: human pickers, 21% hero, goalpost bar, outcome strip |
+| You defend | what do I do, how am I doing? | PASS: "click a road", 5.3% hero, "where the enemy is looking" glow |
+| You attack | why can't I beat the mix? | PASS: "62% of perfect play... the mix made you indifferent" |
+| Compare | which is best, by how much? | PASS: four labelled panels, big %, one shared chart |
+| Objectives 1-6 | promised X, delivered X? | PASS: plain headlines, one demo each, quotes collapsed |
+| History | how did it get here? | PASS: "What happened" plain lead, plain pills, verbatim record below |
+| Documents | where is the evidence? | PASS: comfortable typography, searchable, unedited md |
+
+Fixes applied during the audit: Home provenance legend wrapped (was forcing horizontal
+scroll); coach "Next" button made visible and dismissed on mode change; compare/Obj5
+chart axes plainened ("run", "share of missions that failed"); a matplotlib arrow glyph
+removed; a doubled "computed live" caption fixed; smoke updated to the open_mode() API
+with coach suppression. 34 tests green; smoke 32 shots, exit 0, no glyph/crash warnings.
+
+The provenance contract is unchanged: every number still carries its ledger citation or
+"computed live" mark, verified by the same tests; the redesign moved proof one click
+away, it did not remove it.

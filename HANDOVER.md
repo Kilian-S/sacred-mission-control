@@ -123,3 +123,35 @@ the gen24 centred-TAP-window discovery is documented there and in DATA_MAP §8. 
 benchmark) and C3 (HTML export) intentionally out of scope per Kilian, 2026-07-13; when
 B2 live results land, the natural home is a three-register ladder column beside the
 gen19 anchors in the duel view.
+
+## v2.0 (2026-07-14): the humanist redesign
+
+Kilian's brief after v1.1: strip the jargon, lead with plain language, one idea per
+screen, show the advantage the way a keynote does; the definition of done is the
+stranger test (REDESIGN.md §0). Full plan in REDESIGN.md; audit in SELF_REVIEW round 5.
+
+New load-bearing pieces:
+- **smc/lexicon.py**: the single source of every human-facing string (one metric phrase,
+  human strategy/enemy/scenario/objective names, % formatting). Add new names here, not
+  inline. tests/test_lexicon.py forbids jargon in the visible tables.
+- **smc/widgets/human.py**: HeroNumber, GoalpostBar, OutcomeStrip, MapLegend,
+  RecordDisclosure ("From the record" collapsed proof). Compose these; don't hand-roll.
+- **smc/widgets/coach.py**: three-step per-mode tutorials (QSettings-gated;
+  SMC_DISABLE_COACH suppresses them for screenshots). PlaygroundTab dismisses the active
+  coach on mode change.
+- Percentages are the human surface (lexicon.pct); charts keep 0-1 axes with plain
+  labels. Provenance is UNCHANGED: every number keeps its citation or "computed live"
+  mark; the redesign moved proof behind a disclosure, it did not remove it.
+- data/od_presets.yaml presets carry `human` + `story`; data/narrative_index.yaml entries
+  carry `plain` (one-sentence "what happened"); StatusPill maps ledger verdict tokens to
+  plain words.
+
+Bug fixes: MapView FullViewportUpdate (pan artefacts), zoom chip + Cmd/pinch zoom with
+plain scroll propagating (also fixes Objectives scroll), Delivered/Ambushed outcome
+effects, oracle best_cost_mixture exp-underflow (log-space), Documents 15pt/150%-line
+typography (no md edits). The one keynote change to the Home hero replaced the lone map +
+static X with the planner-vs-SACRED duel; ambush marks appear only at the moment of a
+strike.
+
+Everything else from v1.1 (compare mode, objective spectrum, the Block A/B fold-in) is
+intact under the new language.

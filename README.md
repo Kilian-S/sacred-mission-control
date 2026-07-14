@@ -5,29 +5,32 @@ interactive feel for the SACRED MSc thesis project: contested convoy routing as 
 Stackelberg security game on real city road networks, solved by adversarially-trained
 reinforcement learning and scored against computable game-theoretic optima.
 
+Written to be understood by a stranger with a high-school education in under a minute per
+screen: plain language leads, one idea per screen, and the proof (verbatim ledger quotes)
+is always one click away rather than in your face.
+
 Five tabs (Cmd+1..5):
 
-- **Home**: the pitch, the provenance legend (computed-live green vs ledger grey; era
-  badges), a live hero demo (the deterministic convoy ambushed every sortie, the calibrated
-  mixture slipping through) and the two headline ladders.
-- **Playground**: pick a city (including whole-city Kyiv, 6083 nodes), a screened OD
-  instance, fleet size N, interdiction budget K and the threat band; the LP re-solves live
-  in milliseconds. Three modes: watch strategies play (trained SACRED actors join the
-  roster, with a live route-mixture comparison against the LP equilibrium), duel the
-  pattern-of-life interdictor whose ANTICIPATION glows on the map as it studies your
-  recent routes (the gen19 game), or place the ambush yourself and discover why mixing
-  beats you. Interceptions happen ON the ambush edge; destroyed convoys keep their
-  strategy colour and gain a cross.
-- **Objectives**: six exhibits pairing each research objective's verbatim promise with a
-  live demonstration (the saddle, the environment, training dynamics incl. the gen23 ERB
-  race, the SBO loop raced with click-a-design-onto-the-map, the ladder raced, zero-shot
-  transfer to a never-seen city with the gen21 causal control and the Istanbul/Kyiv rungs).
-- **History**: the project's development generation by generation (gen01-gen23 plus the
-  side arcs), chapter dividers at the three pivots, an explicit era divider at the
-  2026-07-09 node-ordering fix, verbatim provenance-checked ledger quotes,
-  training-trajectory charts, campaign-era TensorBoard curves, and figures. Run families
-  on disk with no curated record yet are flagged in a banner.
-- **Documents**: a searchable markdown reader over the sacred repo and the thesis directory.
+- **Home**: the pitch in three plain sentences, and a live side-by-side hero: the
+  professional planner (left) keeps getting ambushed on its unchanging route while SACRED
+  (right) mostly slips through, each with a running "missions failed" tally.
+- **Playground**: a four-card chooser (watch the game, you defend, you attack, compare
+  policies). One shared scenario bar names each city crossing in plain words (whole-city
+  Kyiv included); everything advanced (fleet size, ambush teams, danger level, the loss
+  rule, dice seed) folds into a "Change the rules" drawer. Every game shows a big
+  percentage ("chance the mission fails"), a goalpost bar between "the proven optimum" and
+  "the best any predictable plan can do", and a live outcome strip; when you defend, the
+  enemy's anticipation glows on the map. First-run coach tutorials explain each mode.
+- **Objectives**: six exhibits, each a plain "we promised X, here is X" with one
+  interactive demonstration (the game made a slider, a city turned into a board, training
+  that knows when to stop, base-siting on a map, the ladder raced, transfer to a
+  never-seen city as a battery bar) and the ledger quotes collapsed into a "From the
+  record" drawer.
+- **History**: the project generation by generation, each card led by a plain "what
+  happened" sentence with the verbatim record beneath, chapter dividers at the pivots and
+  an explicit era divider at the 2026-07-09 fix.
+- **Documents**: the ledgers themselves, comfortably typeset (large type, generous line
+  spacing) and searchable; the source markdown is never modified.
 
 ## Install and run (two commands)
 
