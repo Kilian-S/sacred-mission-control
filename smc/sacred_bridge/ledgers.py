@@ -38,6 +38,7 @@ class Generation:
     question: str
     ledger: str  # path relative to SACRED_ROOT
     quotes: tuple[Quote, ...]
+    plain: str = ""   # one-sentence "in plain words" summary of the quotes
     lesson: str = ""
     demo: str = "text"  # live | chart | text
     runs_dir: str = ""
@@ -127,6 +128,7 @@ def load_narrative_index(
                 question=g.get("question", "").strip(),
                 ledger=ledger_rel,
                 quotes=quotes,
+                plain=g.get("plain", "").strip(),
                 lesson=g.get("lesson", "").strip(),
                 demo=g.get("demo", "text"),
                 runs_dir=g.get("runs_dir", ""),

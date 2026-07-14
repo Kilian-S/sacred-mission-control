@@ -35,20 +35,34 @@ from ..widgets.export import Exportable, export_widget_grab
 from ..widgets.mapview import MapView
 from ..workers import run_in_background
 
-# The master contender list: (key, menu label, STRATEGY_COLOURS key, seed offset).
-# Colour follows the entity across the whole app; the seed offset keeps each
-# arm's sortie stream independent and reproducible from the base seed.
+# The master contender list: (key, lexicon key for the display name,
+# STRATEGY_COLOURS key). Colour follows the entity across the whole app; the
+# list position doubles as the per-arm seed offset so each arm's sortie stream
+# is independent and reproducible from the base seed.
+from .. import lexicon  # noqa: E402  (grouped with the other first-party imports)
+
 _CONTENDERS: list[tuple[str, str, str]] = [
-    ("equilibrium", "Equilibrium mixture (LP minimax)", "equilibrium"),
-    ("shortest", "Shortest path (deterministic stack)", "shortest_path"),
-    ("uniform", "Uniform stack (uncalibrated noise)", "uniform"),
-    ("alns", "ALNS plan (classical coordinator)", "alns"),
-    ("sacred", "SACRED (adversarial self-play)", "sacred"),
-    ("distill", "CONTROL · gen24 distilled (needs labels)", "distill"),
-    ("dr", "CONTROL · gen25 domain randomisation", "dr"),
-    ("vanilla", "CONTROL · gen21 vanilla (cost-trained)", "vanilla"),
-    ("random", "Random-init network", "random_init"),
+    ("equilibrium", lexicon.strategy_name("equilibrium"), "equilibrium"),
+    ("shortest", lexicon.strategy_name("shortest"), "shortest_path"),
+    ("uniform", lexicon.strategy_name("uniform"), "uniform"),
+    ("alns", lexicon.strategy_name("alns"), "alns"),
+    ("sacred", lexicon.strategy_name("sacred"), "sacred"),
+    ("distill", lexicon.strategy_name("distill"), "distill"),
+    ("dr", lexicon.strategy_name("dr"), "dr"),
+    ("vanilla", lexicon.strategy_name("vanilla"), "vanilla"),
+    ("random", lexicon.strategy_name("random_init"), "random_init"),
 ]
+_BLURBS = {
+    "equilibrium": lexicon.strategy_blurb("equilibrium"),
+    "shortest": lexicon.strategy_blurb("shortest"),
+    "uniform": lexicon.strategy_blurb("uniform"),
+    "alns": lexicon.strategy_blurb("alns"),
+    "sacred": lexicon.strategy_blurb("sacred"),
+    "distill": "needs the maths answer key for every training map",
+    "dr": lexicon.strategy_blurb("dr"),
+    "vanilla": lexicon.strategy_blurb("vanilla"),
+    "random": lexicon.strategy_blurb("random_init"),
+}
 _DEFAULT_TICKED = ("equilibrium", "sacred", "distill", "dr")
 _MAX_PANELS = 4
 
@@ -93,8 +107,14 @@ class _ArmPanel(QWidget):
         hl.addWidget(name, 1)
         self.value = QLabel("…")
         self.value.setStyleSheet(
-            f"color: {theme.LIVE_ACCENT}; font-size: 12px; font-weight: 600;")
+            f"color: {theme.INK}; font-size: 19px; font-weight: 700;")
+        self.value.setToolTip("chance the mission fails, against an enemy who has "
+                              "learned this strategy's habits (computed live)")
         hl.addWidget(self.value)
+        self.run_line = QLabel("")
+        self.run_line.setStyleSheet(
+            f"color: {theme.LIVE_ACCENT}; font-size: 11px; font-weight: 600;")
+        hl.addWidget(self.run_line)
         lay.addWidget(head)
 
         self.body = QStackedLayout()
@@ -151,9 +171,11 @@ class ComparePanel(QWidget, Exportable):
             act = QAction(label, self._menu)
             act.setCheckable(True)
             act.setChecked(key in self._ticked)
+            act.setToolTip(_BLURBS.get(key, ""))
             act.toggled.connect(lambda on, k=key: self._contender_toggled(k, on))
             self._menu.addAction(act)
             self._menu_actions[key] = act
+        self._menu.setToolTipsVisible(True)
         self.contenders_btn.setMenu(self._menu)
         bl.addWidget(self.contenders_btn)
         self.status = QLabel("")
@@ -466,6 +488,9 @@ class ComparePanel(QWidget, Exportable):
             self._sortie_live = False
             for arm in self._ready_arms():
                 self._panels[arm.key].map.reveal_ambush()
+                if arm.outcome is not None and not arm.outcome.mission_failed \
+                        and arm.dots:
+                    self._panels[arm.key].map.celebrate(arm.dots[-1])
                 arm.outcome = None
             self._update_values()
             self._redraw_chart()
@@ -522,12 +547,14 @@ class ComparePanel(QWidget, Exportable):
     # ------------------------------------------------------------- readouts
 
     def _update_values(self) -> None:
+        from .. import lexicon
         for arm in self._ready_arms():
             assert arm.engine is not None and arm.spec is not None and arm.attacker is not None
             exact = arm.engine.expected_value(arm.spec, arm.attacker)
             st = arm.engine.stats
-            run = f" · running {st.rate:.3f} (n={st.n})" if st.n else ""
-            self._panels[arm.key].value.setText(f"worst case {exact:.3f}{run}")
+            self._panels[arm.key].value.setText(lexicon.pct(exact))
+            self._panels[arm.key].run_line.setText(
+                f"measured {lexicon.pct(st.rate)} over {st.n}" if st.n else "")
 
     def _redraw_chart(self) -> None:
         if self._inst is None:
@@ -543,15 +570,15 @@ class ComparePanel(QWidget, Exportable):
                         color=arm.colour, linewidth=1.8)
             exact = arm.engine.expected_value(arm.spec, arm.attacker)
             ax.axhline(exact, color=arm.colour, linewidth=1.0, linestyle=":", alpha=0.9)
-            ax.annotate(f"{arm.key} {exact:.3f}", xy=(1.0, exact),
+            ax.annotate(f"{arm.label} {lexicon.pct(exact)}", xy=(1.0, exact),
                         xycoords=("axes fraction", "data"), fontsize=9.5, ha="right",
                         va="bottom", color=arm.colour)
         top = max((self._inst.mc_loss_det, 0.3,
                    *(a.engine.expected_value(a.spec, a.attacker)
                      for a in self._ready_arms())), default=1.0)
         ax.set_ylim(-0.03, min(1.03, top + 0.12))
-        ax.set_xlabel("sortie")
-        ax.set_ylabel(f"running {self._objective_word()} rate")
+        ax.set_xlabel("run")
+        ax.set_ylabel(self._ylabel())
         seeds = ", ".join(f"{a.key} {a.seed}" for a in self._ready_arms())
         self.chart.set_caption(
             "same instance, each arm against its own best-response "
@@ -568,6 +595,13 @@ class ComparePanel(QWidget, Exportable):
         if self._inst.objective == "linear":
             return "expected-fraction-lost"
         return f"P(≥{self._inst.threshold_m} lost)"
+
+    def _ylabel(self) -> str:
+        if self._inst is None or self._inst.objective == "mission":
+            return "share of missions that failed"
+        if self._inst.objective == "linear":
+            return "average share of convoys lost"
+        return f"share losing {self._inst.threshold_m}+ convoys"
 
     # ------------------------------------------------------------- export
 

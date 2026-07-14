@@ -50,14 +50,36 @@ class EraBadge(QLabel):
 
 
 class StatusPill(QLabel):
-    """Verdict token (PASS / FAIL / LOCKED / ...)."""
+    """Verdict pill in plain words (the token stays in the tooltip)."""
 
-    GOOD = {"PASS", "PASS_STRONG", "LOCKED", "LOCK_PASSED", "MET", "CLOSED", "CURVES_BANKED", "DONE", "CORE_DONE"}
-    BAD = {"FAIL", "GATE_FAIL", "REVERSED", "NOT_MET", "NO_TRANSFER", "NO_PASS", "NULL", "RETRACTED", "DIVERGED_THEN_FLAT"}
+    GOOD = {"PASS", "PASS_STRONG", "LOCKED", "LOCK_PASSED", "MET", "CLOSED",
+            "CURVES_BANKED", "DONE", "CORE_DONE", "CONTROL_CONFIRMS", "LAW"}
+    BAD = {"FAIL", "GATE_FAIL", "REVERSED", "NOT_MET", "NO_TRANSFER", "NO_PASS",
+           "NULL", "RETRACTED", "DIVERGED_THEN_FLAT", "FAIL_CLOSES"}
+    PLAIN = {
+        "PASS": "Passed", "PASS_STRONG": "Passed, strongly",
+        "LOCKED": "Locked in", "LOCK_PASSED": "Locked in",
+        "MET": "Promise met", "CLOSED": "Closed", "DONE": "Done",
+        "CORE_DONE": "Core done", "CURVES_BANKED": "Curves banked",
+        "CONTROL_CONFIRMS": "The control confirms it",
+        "LAW": "A measured law",
+        "FAIL": "Failed", "FAIL_CLOSES": "Failed — question closed",
+        "GATE_FAIL": "Gate failed", "REVERSED": "Backfired",
+        "NOT_MET": "Not met", "NO_TRANSFER": "No transfer",
+        "NO_PASS": "No pass", "NULL": "No effect found",
+        "RETRACTED": "Retracted", "DIVERGED_THEN_FLAT": "Diverged, then flat",
+        "NEAR_WASH": "Too close to call", "INCONCLUSIVE": "Inconclusive",
+        "REFRAMED": "Reframed the project", "CLOSED_PIVOT": "Closed — forced the pivot",
+        "SPLIT": "Mixed outcome", "DOWNGRADED": "Downgraded honestly",
+        "REFRAMES": "Changed the story", "REATTRIBUTES": "Changed the explanation",
+        "BOUNDS": "Sets the limits", "PARTIAL": "Partly earned",
+        "NEGATIVE_FINDING": "A negative worth keeping",
+    }
 
     def __init__(self, status: str, parent: QWidget | None = None):
-        text = status.replace("_", " ")
+        text = self.PLAIN.get(status, status.replace("_", " ").capitalize())
         super().__init__(text, parent)
+        self.setToolTip(f"ledger verdict token: {status}")
         if status in self.GOOD:
             bg, fg = "#d9e9dc", "#1d5c2e"
         elif status in self.BAD:

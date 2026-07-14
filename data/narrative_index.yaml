@@ -44,6 +44,8 @@ generations:
     title: "OSM static baseline: the learnability wall"
     dates: "2026-06-14 to 06-18"
     status: DIVERGED_THEN_FLAT
+    plain: >-
+      The very first version trained without crashing but learned nothing useful: whatever it did, about 91% of parcels arrived anyway, so its choices barely mattered.
     question: >-
       Can the original SACRED formulation (Kaliningrad OSM graph, 4 trucks, 150 packages,
       co-evolving congestion adversary) learn end to end?
@@ -66,6 +68,8 @@ generations:
     title: "Stage 0: single-truck next-hop route choice"
     dates: "2026-06-27/28"
     status: NEAR_WASH
+    plain: >-
+      On the simplest possible test track the AI did learn, but it could only ever match the off-the-shelf dispatcher, never beat it.
     question: >-
       Can the SACRED stack learn a consequential adversarial policy at all, on the cleanest
       possible signal (one truck, two-route corridor)?
@@ -85,6 +89,8 @@ generations:
     title: "Static-3b assignment probe and the retraction"
     dates: "2026-06-28, retracted 06-29"
     status: RETRACTED
+    plain: >-
+      An early 'first win' was celebrated, re-checked, and taken back: measured properly, it was a loss. The re-check became the project's rulebook.
     question: >-
       Does RL beat greedy insertion at multi-truck assignment, where greedy is provably
       suboptimal?
@@ -104,6 +110,8 @@ generations:
     title: "gen01: ERB bootstrapping pilot"
     dates: "2026-06-28/29"
     status: INCONCLUSIVE
+    plain: >-
+      Giving the AI worked examples to copy from did not help it learn, and late in training its sparring partner spiralled and wrecked the run.
     question: >-
       Does seeding the replay buffer with greedy demonstrations (Obj-3's ERB bootstrapping)
       fix the static assignment gap and accelerate learning?
@@ -122,6 +130,8 @@ generations:
     title: "gen02: dynamic (Poisson) assignment"
     dates: "2026-06-29/30"
     status: NEAR_WASH
+    plain: >-
+      In a more realistic setting with random orders arriving, the AI again roughly tied the classical dispatcher; the differences were noise.
     question: >-
       Does RL beat greedy insertion under attack in the dynamic regime, beyond seed luck?
     ledger: experiments/gen02_dynassign.md
@@ -140,6 +150,8 @@ generations:
     title: "The critique and the reframe"
     dates: "2026-07-01/02"
     status: REFRAMED
+    plain: >-
+      A fresh pair of eyes found a bug that fired every single round, and noticed the one comparison the project had promised to run had never been run.
     question: >-
       Fresh-eyes interrogation after three near-washes: was the evidence valid, and was
       "beat greedy" ever the objective?
@@ -160,6 +172,8 @@ generations:
     title: "gen03: the robustness pilot; the adversary cannot attack"
     dates: "2026-07-02/03"
     status: "NULL"
+    plain: >-
+      First proper test of the big idea, and it failed: not because the defender could not learn, but because the learned ATTACKER was weaker than random vandalism.
     question: >-
       Does ATLA co-evolution buy robustness to held-out attacks versus an identical
       vanilla-SAC control?
@@ -181,6 +195,8 @@ generations:
     title: "gen04: can the adversary see now? Gate FAIL"
     dates: "2026-07-04"
     status: GATE_FAIL
+    plain: >-
+      Even after giving the attacker full sight of the trucks, it still could not beat random blocking. The problem was in its learning, not its eyes.
     question: >-
       With full motion observability, does a retrained best-response attacker finally beat
       random blocking?
@@ -199,6 +215,8 @@ generations:
     title: "gen05: the hybrid matrix is competence-void"
     dates: "2026-07-04"
     status: NOT_MET
+    plain: >-
+      On the hardest arena neither side learned the job at all, which makes any robustness comparison meaningless. Weak players can fake toughness.
     question: >-
       Does adversarial training against the strong scripted attacker buy robustness to a
       held-out attack on the decision-dense hybrid arena?
@@ -224,6 +242,8 @@ generations:
     title: "gen06: the definitive negative"
     dates: "2026-07-05"
     status: REVERSED
+    plain: >-
+      The definitive negative: with everything finally fair and working, training against attacks made the AI WORSE under attack, and the humble classical dispatcher was the most robust of all.
     question: >-
       In the competence-gated arena, does adversarial training buy robustness to the fully
       held-out targeted attack?
@@ -250,6 +270,8 @@ generations:
     title: "gen07: the flat landscape, and the pivot"
     dates: "2026-07-06"
     status: CLOSED_PIVOT
+    plain: >-
+      The diagnosis: traffic jams are the wrong kind of enemy. Every road-block hurts about the same, so there is no pattern for an attacker to learn, and no pressure for a defender to answer.
     question: >-
       Can the exploitability reframe (worst case against a strategic attacker) be made to
       work with the congestion adversary, given five learnability fixes?
@@ -275,6 +297,8 @@ generations:
     title: "gen08: the security game works; B2-P3 banks the first PASS"
     dates: "2026-07-06/07"
     status: PASS
+    plain: >-
+      The turnaround. Against hidden ambushes, taking the same route every time means being caught every time, and mixing routes the mathematically right way cuts losses dramatically. The AI learned that mix on a real city map.
     question: >-
       Does a SAC dispatcher trained adversarially learn a mixed-strategy route policy less
       exploitable than shortest-path AND than non-adversarial SAC, approaching the computable
@@ -307,6 +331,8 @@ generations:
     title: "gen09: the multi-convoy headline, locked at the best checkpoint"
     dates: "2026-07-08/09"
     status: LOCKED
+    plain: >-
+      Three convoys, one ambusher: the AI's randomised convoy plan lost far fewer missions than the best professional planner, close to the theoretical best possible.
     question: >-
       Does adversarially-trained randomised fleet routing beat a coordinating classical
       metaheuristic (ALNS) and non-adversarial SAC under the loss-averse mission-failure
@@ -333,6 +359,8 @@ generations:
     title: "gen10: the audit, the fix, and the re-runs"
     dates: "2026-07-09"
     status: SPLIT
+    plain: >-
+      An audit found a serious wiring bug affecting every network ever trained. After the fix the single-convoy result got clearly better; the fleet result got worse and was honestly re-measured.
     question: >-
       Do the two banked headlines survive, and by how much do they improve, when the policy
       heads read the correct node embeddings?
@@ -362,6 +390,8 @@ generations:
     title: "gen11: the menu-head decomposition"
     dates: "2026-07-10 (overnight)"
     status: NO_PASS
+    plain: >-
+      Attempts to repair the fleet result with new network parts all failed, but the failures explained exactly why the old buggy version had accidentally looked better.
     question: >-
       Can the post-fix multi-convoy leader reach the pre-fix headline on honest
       representations, via head features or a leader-only push?
@@ -385,6 +415,8 @@ generations:
     title: "F3: the Obj-4 SBO demonstrator"
     dates: "2026-07-10 (overnight)"
     status: MET
+    plain: >-
+      A small neural stand-in learned to predict how safe a base location would be, well enough to pick the best site without solving the game each time.
     question: >-
       Can a neural metamodel approximate the interdiction-aware quality of a base/FOB
       placement + fleet-size design well enough to select good designs without solving the
@@ -404,6 +436,8 @@ generations:
     title: "gen12: the disruption sweep curves and the held-out OD"
     dates: "2026-07-10 (overnight)"
     status: CURVES_BANKED
+    plain: >-
+      The AI stayed ahead of the professional planner in every one of ten harder-and-harder settings: more ambush teams, bigger fleets, and a brand-new crossing.
     question: >-
       Does SACRED's best-checkpoint stay below ALNS across K and N on the headline OD and a
       held-out OD screened before training?
@@ -426,6 +460,8 @@ generations:
     title: "ZST step 0: the pre-registered scoping negative"
     dates: "2026-07-10 (overnight)"
     status: NO_TRANSFER
+    plain: >-
+      Dropped onto a crossing it had never seen, the old single-map AI did worse than an untrained one. Real transfer was going to need training across many maps.
     question: >-
       Does the single-OD post-fix policy transfer zero-shot to a held-out OD's security game?
     ledger: experiments/zst_step0.md
@@ -448,6 +484,8 @@ generations:
     title: "gen13: the lock; the multi-convoy headline goes post-fix"
     dates: "2026-07-10"
     status: LOCK_PASSED
+    plain: >-
+      On a new proving ground chosen by rules written in advance, the fleet result was re-established cleanly after the bug fix, across three fresh training runs.
     question: >-
       Does the held-out-screened instance 35-159 hold near-equilibrium across seeds, making
       the multi-convoy headline fully post-fix?
@@ -469,6 +507,8 @@ generations:
     title: "gen14: n=10 confidence intervals for both headlines"
     dates: "2026-07-10"
     status: CLOSED
+    plain: >-
+      The headline numbers were re-run ten times over to attach proper statistical error bars. They held.
     question: >-
       Make both headlines n=10 with t-based 95% CIs and complete the 35-159 ladder natively.
     ledger: experiments/gen14_evidence.md
@@ -493,6 +533,8 @@ generations:
     title: "gen15: the first trained zero-shot transfer (held-out ODs)"
     dates: "2026-07-10"
     status: PASS
+    plain: >-
+      One AI, trained across sixteen crossings at once, handled six crossings it had never seen and beat the best predictable plan on almost all of them.
     question: >-
       Can ONE adversarially-trained policy, conditioned on the instance, learn mixed-strategy
       fleet routing that transfers zero-shot to held-out OD pairs?
@@ -517,6 +559,8 @@ generations:
     title: "A2: transfer across OD pairs, not across graphs"
     dates: "2026-07-10"
     status: NEGATIVE_FINDING
+    plain: >-
+      But moved to a differently-built map, that same AI was no better than an untrained one: it had learned its home map's geometry, not a general skill.
     question: >-
       Does the gen15 generalist transfer zero-shot to a structurally different graph?
     ledger: experiments/a2_graph_transfer.md
@@ -537,6 +581,8 @@ generations:
     title: "A3: the amortisation benchmark (honest)"
     dates: "2026-07-10"
     status: DONE
+    plain: >-
+      Honesty check on speed: at these problem sizes the exact maths is faster than the AI, so speed is never the argument. The argument is elsewhere.
     question: >-
       Does wall-clock amortisation favour the trained policy over LP re-solving at K=1
       instance sizes?
@@ -558,6 +604,8 @@ generations:
     title: "A4: the matrix-free greedy interdictor (past the oracle wall)"
     dates: "2026-07-10"
     status: CORE_DONE
+    plain: >-
+      A shortcut method was built and verified for the huge problem sizes where exact maths becomes impossible.
     question: >-
       Establish and verify a matrix-free greedy K-edge best response for the regime where
       exact enumeration is RAM-infeasible.
@@ -575,6 +623,8 @@ generations:
     title: "B4: correlated interception; independence is conservative"
     dates: "2026-07-10"
     status: DONE
+    plain: >-
+      The results do not depend on a convenient statistical assumption: checked across the whole range, the headline comparison stands.
     question: >-
       Is the headline's independence-of-interception assumption optimistic or conservative
       for SACRED's randomised stack?
@@ -593,6 +643,8 @@ generations:
     title: "D1: the SBO acquisition loop (Obj-4 proper)"
     dates: "2026-07-10"
     status: PASS_STRONG
+    plain: >-
+      A guided search found the best base location in about 33 tries; blind guessing never found it within the budget.
     question: >-
       Does surrogate-guided acquisition find near-optimal interdiction-aware designs with
       materially fewer exact evaluations than random search?
@@ -613,6 +665,8 @@ generations:
     title: "D2: defender-side hardening couples the tiers"
     dates: "2026-07-10"
     status: DONE
+    plain: >-
+      Spending a small budget to fortify roads changes not just how safe you are but WHERE clever routing pays off: the two decisions are linked.
     question: >-
       Where should a pre-game hardening budget go, and does it change where operational
       randomisation pays?
@@ -631,6 +685,8 @@ generations:
     title: "D3: the composite; design against the deployed policy"
     dates: "2026-07-10"
     status: PASS
+    plain: >-
+      The best base for the AI you actually deploy is not the same as the best base on paper. Only this framework can search for the former.
     question: >-
       Do ZST + SBO + the interdiction game compose: a surrogate over the TRAINED generalist's
       operational exploitability, driving design selection no LP can enter?
@@ -649,6 +705,8 @@ generations:
     title: "gen16: the first cross-CITY zero-shot transfer"
     dates: "2026-07-10/11"
     status: PASS
+    plain: >-
+      Trained in three cities, then dropped into Gdansk, which it had never seen: the AI still routed convoys far better than chance and beat the best predictable plan on 17 of 18 tests.
     question: >-
       Does ONE policy trained on three cities route fleets zero-shot in a fourth, held-out
       city, scored against each OD's own oracle equilibrium?
@@ -675,6 +733,8 @@ generations:
     title: "gen17: the transient is inherent (gate closed)"
     dates: "2026-07-10/11"
     status: FAIL_CLOSES
+    plain: >-
+      One last attempt to make training settle at the optimum instead of drifting past it failed, settling the matter: pick the best version during training, and say so.
     question: >-
       Can annealed FP-smoothing hold the last-iterate equilibrium tail instead of drifting?
       One bounded attempt.
@@ -696,6 +756,8 @@ generations:
     title: "gen18: the coordination boundary is real (gate closed)"
     dates: "2026-07-10/11"
     status: FAIL_CLOSES
+    plain: >-
+      Even with every previous excuse removed, the convoys never learned to travel together on their own. Grouping them by rule stays a stated design choice, not an achievement.
     question: >-
       With all three original handicaps removed, can followers LEARN the stack rather than
       copy structurally?
@@ -717,6 +779,8 @@ generations:
     title: "gen19: pattern-of-life dynamism, solved to the optimum"
     dates: "2026-07-11"
     status: PASS_STRONG
+    plain: >-
+      Against an enemy that watches your recent runs, the AI learned to avoid its own recent pattern and matched the perfect play almost exactly, and it stayed safe against a worst-case enemy too.
     question: >-
       Against a pattern-of-life interdictor that best-responds to the defender's realised
       recent routes, can a history-aware policy beat the history-blind mixed strategy and
@@ -743,6 +807,8 @@ generations:
     title: "gen20: the learned interdictor works (Obj-1's antagonist agent)"
     dates: "2026-07-11"
     status: PASS
+    plain: >-
+      The missing piece: a LEARNED attacker. It reached about 80% of the perfect ambusher's strength, and the defender co-trained against it stayed strong. The same kind of learner that failed against traffic succeeded against ambushes.
     question: >-
       Can a LEARNED interdictor replace the oracle best response as the sparring partner
       on the post-fix interdiction game, and train a defender comparable to the
@@ -771,6 +837,8 @@ generations:
     title: "gen21: the vanilla-transfer control (adversarial training is causal)"
     dates: "2026-07-11"
     status: CONTROL_CONFIRMS
+    plain: >-
+      An AI trained the same way but rewarded only for speed transferred WORSE than an untrained one. The adversary is what teaches the transferable skill.
     question: >-
       Does a vanilla generalist (same multi-city training, travel objective, no adversary)
       transfer as well as the adversarial one? If not, adversarial training is measured,
@@ -803,6 +871,8 @@ generations:
     title: "gen22: the rotation - transfer holds to the hardest hold-out (Istanbul)"
     dates: "2026-07-11"
     status: PASS
+    plain: >-
+      Swap the held-out city for the hardest one, Istanbul, and transfer still beats an untrained network; honestly, on most Istanbul crossings it protects by randomness more than by finesse.
     question: >-
       Does cross-city zero-shot transfer survive rotating the held-out city to Istanbul,
       the structurally most distant graph, or did gen16 just pick the easy hold-out?
@@ -835,6 +905,8 @@ generations:
     title: "gen23: ERB from a metaheuristic hurts (Obj-3 closed with a mechanism)"
     dates: "2026-07-11"
     status: NEGATIVE
+    plain: >-
+      Copying a champion planner's answers into the AI's memory backfired: those answers are predictable by design, which is exactly what this game punishes.
     question: >-
       Does seeding the replay buffer with ALNS-population demonstrations accelerate the
       fleet-route defender's convergence on the interdiction headline (Obj-3 verbatim)?
@@ -862,6 +934,8 @@ generations:
     title: "D3-on-Gdansk: the composite on unseen ground, then its reliability check"
     dates: "2026-07-11, A5 check 07-12"
     status: DOWNGRADED
+    plain: >-
+      The base-picking loop works even in the never-seen city, but its most dramatic single number turned out to depend on which training run you asked. It is now reported per run, as it should be.
     question: >-
       Do the three pillars (ZST pricing, SBO search, the interdiction objective) compose
       on a city the policy never trained on, and is the headline correlation seed-stable?
@@ -893,6 +967,8 @@ generations:
     title: "gen24: the LP-distillation control (the amortiser reckoning begins)"
     dates: "2026-07-12"
     status: REFRAMES
+    plain: >-
+      A rival trained by copying the maths answers transfers just as well, IF it is given the answers and told when to stop. SACRED needs neither, which matters precisely where answers stop existing.
     question: >-
       Does supervised amortisation of the solver (same architecture, same instances,
       imitate each training instance's equilibrium mixture) transfer as well as
@@ -920,6 +996,8 @@ generations:
     title: "A2 + A3: does the generalist read the map, and does it survive intel error?"
     dates: "2026-07-12"
     status: REATTRIBUTES
+    plain: >-
+      Scrambling the danger map the AI sees barely changes its behaviour. That is good news (wrong intelligence barely hurts) and honest news (it navigates by the city's shape, not by reading the map).
     question: >-
       Is the zero-shot claim an artefact of the length-derived threat-map family, and does
       the hedge survive corrupted threat intelligence?
@@ -948,6 +1026,8 @@ generations:
     title: "gen25: the DR control and the vanilla control at n=3 (causality sharpened)"
     dates: "2026-07-12/13"
     status: CONTROL_CONFIRMS
+    plain: >-
+      Training against RANDOM attacks is not enough: only a thinking, best-responding enemy teaches the skill that transfers. And the speed-only control now fails across three runs, not one.
     question: >-
       Is it best-response pressure, or mere threat exposure, that makes adversarial
       training transfer? And does the vanilla control hold beyond one seed?
@@ -974,6 +1054,8 @@ generations:
     title: "A6-A8: the retrieval baseline, the gap-closure ladder, the prevalence figure"
     dates: "2026-07-12"
     status: BOUNDS
+    plain: >-
+      Even a simple copy-the-nearest-answer trick matches the AI's transfer, so the honest claim shifts: SACRED's edge is needing no answer key at all. A new ruler shows protection fading with distance from home, and a survey of 160 crossings shows the problem is everywhere, not cherry-picked.
     question: >-
       Does a trivial retrieval amortiser match the generalist; what does the transfer
       ladder look like in calibration content rather than ratios; and how often does
@@ -1005,6 +1087,8 @@ generations:
     title: "B1: is 'holistic, simultaneous' earned? The integration gap, measured"
     dates: "2026-07-12"
     status: PARTIAL
+    plain: >-
+      Deciding base, fleet and fortification together never did worse than deciding them one at a time, and for one of the two AIs it was 19% better. Together is the safe default.
     question: >-
       Does joint optimisation over placement, fleet and hardening beat the classical
       tier-by-tier decomposition at matched budget, priced by the frozen zero-shot
@@ -1030,6 +1114,8 @@ generations:
     title: "B3 + B4: the risk-aversion law and the multi-OD correlation gap"
     dates: "2026-07-12"
     status: LAW
+    plain: >-
+      Measured across the whole family of loss rules: the headline rule is the one where a predictable planner has no escape. And convoys with different destinations still gain real safety from coordinating.
     question: >-
       Is the mission objective "the objective where we win", and is a multi-OD game
       (different destinations, shared corridors) worth building?

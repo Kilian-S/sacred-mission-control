@@ -1,16 +1,13 @@
-"""The Playground: pick an instance, then play with it in four modes.
+"""The Playground: pick a scenario, then explore it one game at a time.
 
-WATCH: strategy vs strategy, converging to solved values.
-DUEL: the within-episode pattern-of-life game (you or the gen19 policy vs the
-adaptive interdictor).
-AMBUSH: you are the interdictor; discover why mixing beats you.
-COMPARE: up to four protagonists (SACRED, the Block A controls, oracle arms)
-side by side on the same instance as synchronised small multiples.
+A landing chooser offers four games (watch / you defend / you attack /
+compare). Every game shares one scenario bar: a human-named scenario picker
+and a "Change the rules" drawer holding everything advanced (convoys, ambush
+teams, road danger, the objective rule, the dice seed). Space plays/pauses.
 
-The instance picker (city, screened OD presets, N, K, threat band, objective)
-is shared; each mode receives the solved OracleInstance. Space plays/pauses.
-The objective selector exposes B3's three-regime law live; the duel stays
-mission-only (the gen19 game is defined on the mission objective).
+Under the hood nothing changed: the LP re-solves live per scenario, banked
+anchors stay mission-only, the duel game stays on the headline rule, and the
+two public APIs (load_custom_od, open_compare) are unchanged.
 """
 
 from __future__ import annotations
@@ -23,28 +20,63 @@ from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QPushButton,
     QSlider,
     QSpinBox,
-    QSplitter,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
 
-from .. import theme
+from .. import lexicon, theme
 from ..sacred_bridge import maps as maps_bridge
 from ..sacred_bridge import oracle as oracle_bridge
 from ..sacred_bridge.paths import DATA_DIR
-from ..widgets.cards import hrule
+from ..widgets.coach import CoachOverlay
 from ..widgets.export import Exportable
 from ..workers import run_in_background
 from .pg_ambush import AmbushPanel
 from .pg_compare import ComparePanel
 from .pg_duel import DuelPanel
 from .pg_watch import WatchPanel
+
+_MODES = {"watch": 1, "defend": 2, "attack": 3, "compare": 4}
+
+_COACH_STEPS = {
+    "watch": [
+        "Pick a scenario at the top. Each one is a real city crossing with a "
+        "hidden ambusher waiting.",
+        "Choose a defender and an enemy, then press the blue Play button. "
+        "Convoys that make it flash green; ambushed ones flash red.",
+        "Read the score on the right: the big number is the chance the mission "
+        "fails, and the dot shows how close this defender gets to perfect play.",
+    ],
+    "defend": [
+        "You fly the convoy. Click any road on the map to run it.",
+        "The enemy studies your last few runs and waits where you have been — "
+        "the orange glow shows where it expects you right now.",
+        "Keep your score low by never settling into a pattern. The dotted "
+        "lines show what fixed habits, blind mixing and perfect play achieve.",
+    ],
+    "attack": [
+        "You are the ambusher. The defender's driving habits are drawn on the "
+        "map: thicker roads are used more often.",
+        "Click a coloured road to place your ambush there.",
+        "Try to beat the best possible ambush. Against the proven-optimal mix "
+        "you will find every spot pays the same — that is the whole point.",
+    ],
+    "compare": [
+        "Up to four strategies drive the same scenario side by side, each "
+        "against an enemy that knows its habits.",
+        "Press Race, or Run 300 instantly, and watch the failure rates settle "
+        "onto their predicted values in the shared chart below.",
+        "Use the Contenders button to swap in different strategies, including "
+        "the control AIs.",
+    ],
+}
 
 
 def _load_presets() -> dict:
@@ -64,151 +96,229 @@ class PlaygroundTab(QWidget, Exportable):
         self._building = False
         self._rebuild_pending = False
 
-        lay = QHBoxLayout(self)
-        lay.setContentsMargins(12, 8, 12, 12)
-        split = QSplitter(Qt.Horizontal)
-        lay.addWidget(split)
+        root = QVBoxLayout(self)
+        root.setContentsMargins(16, 10, 16, 14)
+        root.setSpacing(8)
 
-        split.addWidget(self._build_sidebar())
+        self.scenario_bar = self._build_scenario_bar()
+        root.addWidget(self.scenario_bar)
 
         self.stack = QStackedWidget()
+        self.landing = self._build_landing()
         self.watch = WatchPanel()
         self.duel = DuelPanel()
         self.ambush = AmbushPanel()
         self.compare = ComparePanel()
-        self.stack.addWidget(self.watch)
-        self.stack.addWidget(self.duel)
-        self.stack.addWidget(self.ambush)
-        self.stack.addWidget(self.compare)
-        split.addWidget(self.stack)
-        split.setSizes([280, 1080])
+        for w in (self.landing, self.watch, self.duel, self.ambush, self.compare):
+            self.stack.addWidget(w)
+        root.addWidget(self.stack, 1)
 
         QShortcut(QKeySequence(Qt.Key_Space), self, activated=self._space,
                   context=Qt.WidgetWithChildrenShortcut)
 
-        self._populate_cities()
+        self._populate_scenarios()
+        self.scenario_bar.hide()  # landing first
         QTimer.singleShot(50, self._rebuild_instance)
 
-    # ------------------------------------------------------------- sidebar
+    # ------------------------------------------------------------- landing
 
-    def _build_sidebar(self) -> QWidget:
-        side = QWidget()
-        lay = QVBoxLayout(side)
-        lay.setContentsMargins(0, 0, 0, 0)
-        lay.setSpacing(8)
+    def _build_landing(self) -> QWidget:
+        page = QWidget()
+        lay = QVBoxLayout(page)
+        lay.setContentsMargins(24, 18, 24, 18)
+        lay.setSpacing(14)
 
-        def heading(text: str) -> QLabel:
-            h = QLabel(text)
-            h.setProperty("h3", True)
-            return h
+        title = QLabel("What do you want to see?")
+        title.setProperty("h1", True)
+        lay.addWidget(title)
+        sub = QLabel("Four ways into the same game: a city, some convoys, and an "
+                     "enemy that learns your habits.")
+        sub.setStyleSheet(f"color: {theme.INK_SECONDARY}; font-size: 15px;")
+        sub.setWordWrap(True)
+        lay.addWidget(sub)
 
-        lay.addWidget(heading("Mode"))
-        self.mode_combo = QComboBox()
-        self.mode_combo.addItem("Watch strategies play", 0)
-        self.mode_combo.addItem("Pattern-of-life duel (you can play)", 1)
-        self.mode_combo.addItem("You place the ambush", 2)
-        self.mode_combo.addItem("Compare protagonists side by side", 3)
-        self.mode_combo.currentIndexChanged.connect(self._mode_changed)
-        lay.addWidget(self.mode_combo)
+        grid = QGridLayout()
+        grid.setSpacing(14)
+        cards = [
+            ("Watch the game", "See defenders and enemies play each other, and "
+             "watch the score settle onto the predicted value.", "watch"),
+            ("You defend", "Click the convoy's road each run and try to dodge an "
+             "enemy that studies your pattern.", "defend"),
+            ("You attack", "Place the ambush yourself and learn why the "
+             "proven-optimal mix cannot be beaten.", "attack"),
+            ("Compare policies", "Four strategies on the same map, side by side, "
+             "with one shared scoreboard.", "compare"),
+        ]
+        self._landing_cards: dict[str, QPushButton] = {}
+        for i, (name, desc, key) in enumerate(cards):
+            btn = QPushButton(f"{name}\n{desc}")
+            btn.setMinimumHeight(104)
+            btn.setStyleSheet(
+                f"QPushButton {{ text-align: left; padding: 16px 18px; font-size: 16px;"
+                f"font-weight: 600; background: {theme.SURFACE}; border-radius: 12px; }}"
+                f"QPushButton:hover {{ border-color: {theme.BLUE}; }}")
+            btn.clicked.connect(lambda _=False, k=key: self.open_mode(k))
+            grid.addWidget(btn, i // 2, i % 2)
+            self._landing_cards[key] = btn
+        lay.addLayout(grid)
+        lay.addStretch(1)
+        return page
 
-        lay.addWidget(hrule())
-        lay.addWidget(heading("Instance"))
-        self.city_combo = QComboBox()
-        self.city_combo.currentIndexChanged.connect(self._city_changed)
-        lay.addWidget(self.city_combo)
+    # ------------------------------------------------------------- scenario bar
 
-        self.od_combo = QComboBox()
-        self.od_combo.currentIndexChanged.connect(self._od_changed)
-        lay.addWidget(self.od_combo)
+    def _build_scenario_bar(self) -> QWidget:
+        bar = QWidget()
+        outer = QVBoxLayout(bar)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(4)
 
-        grid = QWidget()
-        g = QHBoxLayout(grid)
-        g.setContentsMargins(0, 0, 0, 0)
-        g.addWidget(QLabel("Convoys N"))
+        row1 = QWidget()
+        r1 = QHBoxLayout(row1)
+        r1.setContentsMargins(0, 0, 0, 0)
+        r1.setSpacing(10)
+        self.back_btn = QPushButton("← All games")
+        self.back_btn.setProperty("quiet", True)
+        self.back_btn.clicked.connect(lambda: self.open_mode(None))
+        r1.addWidget(self.back_btn)
+        r1.addWidget(QLabel("Scenario:"))
+        self.scenario_combo = QComboBox()
+        self.scenario_combo.setMinimumWidth(340)
+        self.scenario_combo.currentIndexChanged.connect(self._scenario_changed)
+        r1.addWidget(self.scenario_combo)
+        self.rules_btn = QPushButton("Change the rules ▸")
+        self.rules_btn.setProperty("quiet", True)
+        self.rules_btn.setCheckable(True)
+        self.rules_btn.toggled.connect(self._toggle_rules)
+        r1.addWidget(self.rules_btn)
+        self.coach_btn = QPushButton("?")
+        self.coach_btn.setProperty("quiet", True)
+        self.coach_btn.setFixedWidth(30)
+        self.coach_btn.setToolTip("Show the three-step guide for this game again")
+        self.coach_btn.clicked.connect(self._replay_coach)
+        r1.addWidget(self.coach_btn)
+        r1.addStretch(1)
+        self.status = QLabel("")
+        self.status.setProperty("fineprint", True)
+        self.status.setWordWrap(True)
+        r1.addWidget(self.status)
+        outer.addWidget(row1)
+
+        self.story_label = QLabel("")
+        self.story_label.setProperty("fineprint", True)
+        self.story_label.setWordWrap(True)
+        outer.addWidget(self.story_label)
+
+        self.rules_drawer = self._build_rules_drawer()
+        self.rules_drawer.hide()
+        outer.addWidget(self.rules_drawer)
+        return bar
+
+    def _build_rules_drawer(self) -> QWidget:
+        drawer = QWidget()
+        lay = QVBoxLayout(drawer)
+        lay.setContentsMargins(8, 4, 8, 6)
+        lay.setSpacing(6)
+
+        row = QWidget()
+        rl = QHBoxLayout(row)
+        rl.setContentsMargins(0, 0, 0, 0)
+        rl.setSpacing(12)
+
+        rl.addWidget(QLabel("Convoys"))
         self.n_spin = QSpinBox()
         self.n_spin.setRange(1, 5)
         self.n_spin.setValue(3)
         self.n_spin.valueChanged.connect(self._schedule_rebuild)
-        g.addWidget(self.n_spin)
-        g.addWidget(QLabel("Assets K"))
+        rl.addWidget(self.n_spin)
+
+        rl.addWidget(QLabel("Ambush teams"))
         self.k_spin = QSpinBox()
         self.k_spin.setRange(1, 3)
         self.k_spin.setValue(1)
         self.k_spin.valueChanged.connect(self._schedule_rebuild)
-        g.addWidget(self.k_spin)
-        lay.addWidget(grid)
+        rl.addWidget(self.k_spin)
 
-        self.k_warning = QLabel("K=3 enumerates ~80k interdiction sets; expect a ~20-30 s solve. "
-                                "K=3 with N of 4 or more would need gigabytes and is refused.")
-        self.k_warning.setWordWrap(True)
-        self.k_warning.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 12px;")
-        self.k_warning.hide()
-        lay.addWidget(self.k_warning)
+        rl.addWidget(QLabel("Road danger"))
+        self.danger_slider = QSlider(Qt.Horizontal)
+        self.danger_slider.setRange(50, 99)
+        self.danger_slider.setValue(95)
+        self.danger_slider.setFixedWidth(140)
+        self.danger_slider.setToolTip(
+            "How dangerous the most exposed roads are. The safest roads stay "
+            "at 15% per ambush; this sets the top of the range.")
+        self.danger_slider.valueChanged.connect(self._danger_changed)
+        rl.addWidget(self.danger_slider)
+        self.danger_label = QLabel("up to 95%")
+        self.danger_label.setProperty("fineprint", True)
+        rl.addWidget(self.danger_label)
 
-        lay.addWidget(heading("Objective"))
-        self.objective_combo = QComboBox()
-        self.objective_combo.addItem(
-            "Mission: P(at least 1 lost) — the headline objective", ("mission", 1))
-        self.objective_combo.addItem(
-            "Threshold: P(at least 2 lost)", ("threshold", 2))
-        self.objective_combo.addItem(
-            "Risk-neutral: expected fraction lost", ("linear", 1))
-        self.objective_combo.currentIndexChanged.connect(self._objective_changed)
-        lay.addWidget(self.objective_combo)
-        self.objective_label = QLabel("")
-        self.objective_label.setWordWrap(True)
-        self.objective_label.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 12px;")
-        lay.addWidget(self.objective_label)
-        self._update_objective_label()
-
-        lay.addWidget(heading("Threat band"))
-        self.hard_check = QCheckBox("Hard interception (all-or-nothing)")
+        self.hard_check = QCheckBox("Every ambush is lethal")
+        self.hard_check.setToolTip(
+            "All-or-nothing: driving through an ambush always destroys the "
+            "convoy (the single-convoy record was measured this way)")
         self.hard_check.toggled.connect(self._hard_toggled)
-        lay.addWidget(self.hard_check)
-        band_row = QWidget()
-        br = QHBoxLayout(band_row)
-        br.setContentsMargins(0, 0, 0, 0)
-        self.band_lo = QSlider(Qt.Horizontal)
-        self.band_lo.setRange(5, 50)
-        self.band_lo.setValue(15)
-        self.band_hi = QSlider(Qt.Horizontal)
-        self.band_hi.setRange(50, 99)
-        self.band_hi.setValue(95)
-        for s in (self.band_lo, self.band_hi):
-            s.valueChanged.connect(self._band_changed)
-            br.addWidget(s)
-        lay.addWidget(band_row)
-        self.band_label = QLabel("band 0.15 - 0.95 (the headline setting)")
-        self.band_label.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 12px;")
-        lay.addWidget(self.band_label)
+        rl.addWidget(self.hard_check)
+        rl.addStretch(1)
+        lay.addWidget(row)
 
-        lay.addWidget(hrule())
-        seed_row = QWidget()
-        sd = QHBoxLayout(seed_row)
-        sd.setContentsMargins(0, 0, 0, 0)
-        sd.addWidget(QLabel("Seed"))
+        row2 = QWidget()
+        r2 = QHBoxLayout(row2)
+        r2.setContentsMargins(0, 0, 0, 0)
+        r2.setSpacing(12)
+        r2.addWidget(QLabel("What counts as failure?"))
+        self.objective_combo = QComboBox()
+        for key in ("mission", "threshold", "linear"):
+            name, blurb = lexicon.OBJECTIVES[key]
+            m = 2 if key == "threshold" else 1
+            self.objective_combo.addItem(name, (key, m))
+            self.objective_combo.setItemData(
+                self.objective_combo.count() - 1, blurb, Qt.ToolTipRole)
+        self.objective_combo.currentIndexChanged.connect(self._objective_changed)
+        r2.addWidget(self.objective_combo)
+        self.objective_label = QLabel("")
+        self.objective_label.setProperty("fineprint", True)
+        self.objective_label.setWordWrap(True)
+        r2.addWidget(self.objective_label, 1)
+
+        r2.addWidget(QLabel("Dice seed"))
         self.seed_spin = QSpinBox()
         self.seed_spin.setRange(0, 9999)
         self.seed_spin.setValue(0)
+        self.seed_spin.setToolTip(
+            "Every random draw is reproducible; the same seed replays the same runs")
         self.seed_spin.valueChanged.connect(self._seed_changed)
-        sd.addWidget(self.seed_spin)
-        self.reset_btn = QPushButton("Reset stats")
+        r2.addWidget(self.seed_spin)
+        self.reset_btn = QPushButton("Reset the score")
         self.reset_btn.clicked.connect(lambda: self._panel().reset_stats()
                                        if hasattr(self._panel(), "reset_stats") else None)
-        sd.addWidget(self.reset_btn)
-        lay.addWidget(seed_row)
+        r2.addWidget(self.reset_btn)
+        lay.addWidget(row2)
 
-        lay.addStretch(1)
-        self.status = QLabel("")
-        self.status.setWordWrap(True)
-        self.status.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 13px;")
-        lay.addWidget(self.status)
-        return side
+        self.k_warning = QLabel(
+            "Three ambush teams take twenty to thirty seconds to solve. Three "
+            "teams against four or more convoys is beyond this machine and is "
+            "refused.")
+        self.k_warning.setWordWrap(True)
+        self.k_warning.setProperty("fineprint", True)
+        self.k_warning.hide()
+        lay.addWidget(self.k_warning)
+        return drawer
+
+    def _toggle_rules(self, on: bool) -> None:
+        self.rules_btn.setText("Change the rules ▾" if on else "Change the rules ▸")
+        self.rules_drawer.setVisible(on)
 
     # ------------------------------------------------------------- helpers
 
     def _panel(self):
         return self.stack.currentWidget()
+
+    def _mode_key(self) -> str | None:
+        idx = self.stack.currentIndex()
+        for k, v in _MODES.items():
+            if v == idx:
+                return k
+        return None
 
     def _objective(self) -> tuple[str, int]:
         data = self.objective_combo.currentData()
@@ -216,28 +326,24 @@ class PlaygroundTab(QWidget, Exportable):
 
     def _update_objective_label(self) -> None:
         obj, _m = self._objective()
-        texts = {
-            "mission": "the unique objective the deterministic planner cannot escape "
-                       "by spreading (b3_b4_oracle.md)",
-            "threshold": "B3's law: degenerate in favour of determinism while the fleet "
-                         "fits disjoint routes (both values can be exactly 0); at N=5 it "
-                         "re-enters.",
-            "linear": "B3's law: a modest 1.3-1.8x gap deterministic spreading partly "
-                      "closes.",
-        }
-        self.objective_label.setText(texts.get(obj, ""))
+        _name, blurb = lexicon.OBJECTIVES.get(obj, ("", ""))
+        self.objective_label.setText(blurb)
 
     def _objective_changed(self) -> None:
         obj, _m = self._objective()
         self._update_objective_label()
-        # the gen19 duel game is defined on the mission objective only
-        duel_item = self.mode_combo.model().item(1)
-        if duel_item is not None:
-            duel_item.setEnabled(obj == "mission")
-        if obj != "mission" and self.mode_combo.currentData() == 1:
-            self.mode_combo.setCurrentIndex(0)
+        # the you-defend game (gen19) is defined on the headline rule
+        defend_card = self._landing_cards.get("defend")
+        if defend_card is not None:
+            defend_card.setEnabled(obj == "mission")
+            defend_card.setToolTip(
+                "" if obj == "mission" else
+                "The you-defend game is defined on the headline rule (any loss "
+                "means failure). Change the rule back to play it.")
+        if obj != "mission" and self._mode_key() == "defend":
+            self.open_mode("watch")
             self.status.setText(
-                "Duel mode needs the mission objective (the gen19 game is defined on it); "
+                "You-defend uses the headline rule (any loss means failure); "
                 "switched to Watch.")
         self._schedule_rebuild()
 
@@ -246,42 +352,72 @@ class PlaygroundTab(QWidget, Exportable):
         if hasattr(p, "toggle_play"):
             p.toggle_play()
 
-    def _mode_changed(self) -> None:
+    # ------------------------------------------------------------- modes
+
+    def open_mode(self, key: str | None) -> None:
+        """Switch to a game (or back to the landing chooser with None)."""
         for p in (self.watch, self.duel, self.compare):
             p.stop_play()
-        self.stack.setCurrentIndex(self.mode_combo.currentData())
+        # a coach from the mode we are leaving must not linger over the new one
+        if getattr(self, "_coach", None) is not None:
+            self._coach.dismiss()
+            self._coach = None
+        if key is None:
+            self.stack.setCurrentIndex(0)
+            self.scenario_bar.hide()
+            self.export_name = "playground"
+            return
+        if key == "defend" and self._objective()[0] != "mission":
+            self.objective_combo.setCurrentIndex(0)
+            self.status.setText(
+                "You-defend uses the headline rule; the rule was switched back.")
+        self.stack.setCurrentIndex(_MODES[key])
+        self.scenario_bar.show()
+        self.export_name = f"playground-{key}"
         if self._inst is not None:
             self._panel().set_instance(self._inst, self._preset_for_panel(),
                                        self.seed_spin.value())
+        self._coach = CoachOverlay.maybe_show(self, f"playground-{key}", _COACH_STEPS[key])
+
+    def _replay_coach(self) -> None:
+        key = self._mode_key()
+        if key:
+            if getattr(self, "_coach", None) is not None:
+                self._coach.dismiss()
+            self._coach = CoachOverlay.maybe_show(
+                self, f"playground-{key}", _COACH_STEPS[key], force=True)
 
     def _seed_changed(self) -> None:
         p = self._panel()
         if hasattr(p, "set_seed"):
             p.set_seed(self.seed_spin.value())
 
-    # ------------------------------------------------------------- pickers
+    # ------------------------------------------------------------- scenarios
 
-    def _populate_cities(self) -> None:
-        self.city_combo.blockSignals(True)
-        self.city_combo.clear()
-        for c in maps_bridge.available_cities():
-            self.city_combo.addItem(maps_bridge.CITY_LABELS.get(c, c), c)
-        self.city_combo.blockSignals(False)
-        self._city_changed()
+    def _populate_scenarios(self) -> None:
+        """One combo, human names first, grouped by city order."""
+        self.scenario_combo.blockSignals(True)
+        self.scenario_combo.clear()
+        for city in maps_bridge.available_cities():
+            city_label = maps_bridge.CITY_LABELS.get(city, city).split(" (")[0]
+            for p in self._presets.get(city, []):
+                human = p.get("human") or p.get("label", p.get("od", "?"))
+                self.scenario_combo.addItem(f"{human} — {city_label}",
+                                            {"city": city, "preset": p})
+                self.scenario_combo.setItemData(
+                    self.scenario_combo.count() - 1,
+                    p.get("story", ""), Qt.ToolTipRole)
+        self.scenario_combo.blockSignals(False)
+        self._scenario_changed()
 
-    def _city_changed(self) -> None:
-        city = self.city_combo.currentData()
-        self.od_combo.blockSignals(True)
-        self.od_combo.clear()
-        for p in self._presets.get(city, []):
-            self.od_combo.addItem(p["label"], p)
-        if self.od_combo.count() == 0:
-            self.od_combo.addItem("no screened presets for this city", None)
-        self.od_combo.blockSignals(False)
-        self._od_changed()
+    def _current_scenario(self) -> tuple[str | None, dict | None]:
+        data = self.scenario_combo.currentData()
+        if not data:
+            return None, None
+        return data["city"], data["preset"]
 
-    def _od_changed(self) -> None:
-        p = self.od_combo.currentData()
+    def _scenario_changed(self) -> None:
+        _city, p = self._current_scenario()
         if p:
             self.n_spin.blockSignals(True)
             self.k_spin.blockSignals(True)
@@ -293,25 +429,33 @@ class PlaygroundTab(QWidget, Exportable):
             self.n_spin.blockSignals(False)
             self.k_spin.blockSignals(False)
             self.hard_check.blockSignals(False)
+            self._update_story(p)
         self._schedule_rebuild()
 
+    def _update_story(self, p: dict) -> None:
+        story = p.get("story", "")
+        band = "every ambush lethal" if self.hard_check.isChecked() else \
+            f"road danger 15-{self.danger_slider.value()}%"
+        code = (f"{p.get('od', '?')} · convoys {self.n_spin.value()} · "
+                f"ambush teams {self.k_spin.value()} · {band}")
+        self.story_label.setText(f"{story}   ·   {code}")
+
     def _hard_toggled(self, on: bool, rebuild: bool = True) -> None:
-        self.band_lo.setEnabled(not on)
-        self.band_hi.setEnabled(not on)
+        self.danger_slider.setEnabled(not on)
         if rebuild:
             self._schedule_rebuild()
 
-    def _band_changed(self) -> None:
-        lo, hi = self.band_lo.value() / 100, self.band_hi.value() / 100
-        self.band_label.setText(
-            f"band {lo:.2f} - {hi:.2f}"
-            + (" (the headline setting)" if (lo, hi) == (0.15, 0.95) else ""))
+    def _danger_changed(self) -> None:
+        self.danger_label.setText(f"up to {self.danger_slider.value()}%")
         self._schedule_rebuild()
 
     # ------------------------------------------------------------- rebuild
 
     def _schedule_rebuild(self) -> None:
         self.k_warning.setVisible(self.k_spin.value() >= 3)
+        _city, p = self._current_scenario()
+        if p:
+            self._update_story(p)
         if not hasattr(self, "_debounce"):
             self._debounce = QTimer(self)
             self._debounce.setSingleShot(True)
@@ -319,10 +463,9 @@ class PlaygroundTab(QWidget, Exportable):
         self._debounce.start(350)
 
     def _rebuild_instance(self) -> None:
-        p = self.od_combo.currentData()
-        city = self.city_combo.currentData()
+        city, p = self._current_scenario()
         if not city or not p:
-            self.status.setText("Pick a city with screened presets.")
+            self.status.setText("Pick a scenario.")
             return
         if self._building:
             self._rebuild_pending = True
@@ -335,25 +478,25 @@ class PlaygroundTab(QWidget, Exportable):
         if K >= 3 and N >= 4:
             self._building = False
             self.status.setText(
-                "K=3 with N>=4 would materialise a multi-gigabyte objective matrix "
-                "(the measured oracle wall); lower K or N. The regime beyond the wall "
-                "is the A4 greedy-BR story, told in History.")
+                "Three ambush teams against four or more convoys is beyond this "
+                "machine (the measured wall); lower one of them.")
             return
         band = None if self.hard_check.isChecked() else (
-            self.band_lo.value() / 100, self.band_hi.value() / 100)
+            0.15, self.danger_slider.value() / 100)
         obj, m = self._objective()
-        self.status.setText(f"Solving {city} {s}-{t}  K={K} N={N} ({obj}) …")
+        self.status.setText("Solving this scenario…")
         t0 = time.perf_counter()
         run_in_background(
-            oracle_bridge.build_instance, city, s, t, K, N, int(p.get("k_extra", 8)), band,
-            obj, m,
+            oracle_bridge.build_instance, city, s, t, K, N, int(p.get("k_extra", 8)),
+            band, obj, m,
             on_done=lambda inst: self._instance_ready(inst, time.perf_counter() - t0),
             on_fail=self._instance_failed,
         )
 
     def _instance_failed(self, tb: str) -> None:
         self._building = False
-        self.status.setText("Instance failed to build. Last line:\n" + tb.strip().splitlines()[-1])
+        self.status.setText("This scenario failed to solve. Last line:\n"
+                            + tb.strip().splitlines()[-1])
 
     def _instance_ready(self, inst: oracle_bridge.OracleInstance, dt: float) -> None:
         self._building = False
@@ -364,56 +507,57 @@ class PlaygroundTab(QWidget, Exportable):
         self._inst = inst
         note = ""
         if inst.objective != "mission":
-            note = " · anchors hidden: banked at the mission objective"
-        self.status.setText(
-            f"{inst.n_routes} routes · {len(inst.interdiction_sets)} interdiction sets · "
-            f"solved in {dt * 1000:.0f} ms{note}")
-        self._panel().set_instance(inst, self._preset_for_panel(), self.seed_spin.value())
+            note = " · record numbers hidden: they were banked under the headline rule"
+        self.status.setText(f"solved in {dt * 1000:.0f} ms{note}")
+        if self.stack.currentIndex() != 0:
+            self._panel().set_instance(inst, self._preset_for_panel(),
+                                       self.seed_spin.value())
 
     def _preset_for_panel(self) -> dict | None:
-        """Banked anchors are mission-objective ledger rows; off-mission they
-        must not show at all (honesty over decoration)."""
+        """Banked anchors are mission-rule ledger rows; off-mission they must
+        not show at all (honesty over decoration)."""
         obj, _m = self._objective()
-        return self.od_combo.currentData() if obj == "mission" else None
+        _city, p = self._current_scenario()
+        return p if obj == "mission" else None
 
     # ------------------------------------------------------------- public API
 
     def load_custom_od(self, city: str, od: str) -> None:
-        """Open a specific (city, od) instance, e.g. from the A8 prevalence
-        screen. Falls back to inserting a clearly-labelled temporary preset
-        when the OD is not a banked one; safe mid-build (debounced)."""
+        """Open a specific (city, od) scenario, e.g. from the prevalence map.
+        Inserts a clearly-labelled temporary scenario when the crossing is not
+        a banked one; safe mid-build (debounced)."""
         if self.objective_combo.currentIndex() != 0:
-            self.objective_combo.setCurrentIndex(0)  # anchors/presets are mission rows
-        for i in range(self.city_combo.count()):
-            if self.city_combo.itemData(i) == city:
-                if self.city_combo.currentIndex() != i:
-                    self.city_combo.setCurrentIndex(i)  # repopulates the OD combo
-                break
+            self.objective_combo.setCurrentIndex(0)  # records are headline-rule rows
         # drop any previous temporary entry
-        for i in range(self.od_combo.count() - 1, -1, -1):
-            data = self.od_combo.itemData(i)
-            if isinstance(data, dict) and data.get("temp"):
-                self.od_combo.removeItem(i)
-        for i in range(self.od_combo.count()):
-            data = self.od_combo.itemData(i)
-            if isinstance(data, dict) and data.get("od") == od:
-                self.od_combo.setCurrentIndex(i)
-                self._schedule_rebuild()
+        for i in range(self.scenario_combo.count() - 1, -1, -1):
+            data = self.scenario_combo.itemData(i)
+            if isinstance(data, dict) and data.get("preset", {}).get("temp"):
+                self.scenario_combo.removeItem(i)
+        # existing scenario?
+        for i in range(self.scenario_combo.count()):
+            data = self.scenario_combo.itemData(i)
+            if (isinstance(data, dict) and data.get("city") == city
+                    and data.get("preset", {}).get("od") == od):
+                self.scenario_combo.setCurrentIndex(i)
+                if self.stack.currentIndex() == 0:
+                    self.open_mode("watch")
                 return
-        self.od_combo.insertItem(
-            0, f"{od} · from the prevalence screen (A8-sampled, not a banked preset)",
-            {"od": od, "k_extra": 8, "N": 3, "K": 1, "temp": True})
-        self.od_combo.setCurrentIndex(0)
-        self._schedule_rebuild()
+        city_label = maps_bridge.CITY_LABELS.get(city, city).split(" (")[0]
+        preset = {"od": od, "k_extra": 8, "N": 3, "K": 1, "temp": True,
+                  "human": f"Crossing {od}",
+                  "story": "Picked from the prevalence map; a screened crossing, "
+                           "not one of the named scenarios."}
+        self.scenario_combo.insertItem(0, f"Crossing {od} — {city_label}",
+                                       {"city": city, "preset": preset})
+        self.scenario_combo.setCurrentIndex(0)
+        if self.stack.currentIndex() == 0:
+            self.open_mode("watch")
 
     def open_compare(self, contender_keys: list[str] | None = None) -> None:
-        """Switch to the compare mode, optionally pre-ticking contenders."""
+        """Switch to the compare game, optionally pre-ticking contenders."""
         if contender_keys:
             self.compare.set_contenders(contender_keys)
-        idx = next((i for i in range(self.mode_combo.count())
-                    if self.mode_combo.itemData(i) == 3), None)
-        if idx is not None:
-            self.mode_combo.setCurrentIndex(idx)
+        self.open_mode("compare")
 
     # ------------------------------------------------------------- export
 
@@ -421,4 +565,5 @@ class PlaygroundTab(QWidget, Exportable):
         p = self._panel()
         if isinstance(p, Exportable):
             return p.export_view()
-        return []
+        from ..widgets.export import export_widget_grab
+        return export_widget_grab(self, self.export_name)

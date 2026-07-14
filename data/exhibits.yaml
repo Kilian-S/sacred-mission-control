@@ -229,7 +229,11 @@ gen19_ladder:
 # every quote verbatim in the cited ledger, enforced by tests/test_exhibits.py).
 quote_cards:
   obj1:
-    - title: "Closed with a learned agent: gen20 (2026-07-11)"
+    - title: "Can the enemy be an AI too?"
+      plain: >-
+        We replaced the mathematical enemy with a learned one. It reached about
+        four-fifths of the perfect ambusher's strength, and SACRED, trained against it,
+        still kept the mission-failure chance far below the professional planner's.
       ledger: experiments/gen20_f2_learned.md
       items:
         - label: "The pass"
@@ -239,7 +243,11 @@ quote_cards:
         - label: "The campaign reversal"
           quote: "the learned adversary that could not learn to attack congestion CAN learn to interdict"
   obj3:
-    - title: "ERB closed verbatim: gen23 (2026-07-11)"
+    - title: "Do expert examples help it learn?"
+      plain: >-
+        Showing the AI the professional planner's example plans made it WORSE: the
+        examples teach predictable habits, and predictable habits are exactly what
+        loses this game. A fresh start learned more, faster.
       ledger: experiments/gen23_c1_erb.md
       items:
         - label: "The result"
@@ -247,7 +255,12 @@ quote_cards:
         - label: "The mechanism"
           quote: "seeding a MIXED-STRATEGY learner (whose optimum is randomise-your-stack) with deterministic expert demonstrations biases it toward exploitable determinism, away from the equilibrium randomisation"
   obj4:
-    - title: "The composite on unseen ground: D3-on-Gdansk, per-seed after the A5 check"
+    - title: "Designing bases in a city nobody trained on — and the honest caveat"
+      plain: >-
+        The whole pipeline works in a never-seen city: the shortcut model still scores
+        sites well and the search still finds the best base quickly. But the dramatic
+        first number we reported there turned out to depend on which trained AI we
+        asked, so we now show all three answers and say so plainly.
       ledger: experiments/d3_gdansk.md
       items:
         - label: "The surrogate on unseen ground"
@@ -258,7 +271,11 @@ quote_cards:
           quote: "the headline 0.109 was substantially a SEED-0 artefact; the honest cross-seed statement is \"policy-vs-oracle design-target correlation 0.11-0.44 on the unseen city, vs 0.768 in-distribution\": still a real gap, no longer a dramatic near-zero"
         - label: "What it still argues, stated carefully"
           quote: "you must price THE policy you will deploy, not a class-average and not the equilibrium abstraction"
-    - title: "Is \"simultaneous\" earned? The B1 integration gap (2026-07-12)"
+    - title: "Decide everything together, or one thing at a time?"
+      plain: >-
+        Deciding base, fleet and road reinforcement together never did worse than the
+        classical one-decision-at-a-time approach, and for one of the two trained AIs
+        the classical way left 19% of the achievable safety on the table.
       ledger: experiments/b1_integration_gap.md
       items:
         - label: "The honest finding"
@@ -266,7 +283,12 @@ quote_cards:
         - label: "The Obj-4 wording, binding"
           quote: "a single surrogate-guided loop over the joint strategic-tactical-operational space finds the optimum at the same budget where the classical decomposition is only sometimes adequate (and 19% worse when not)"
   zst:
-    - title: "The two-regime synthesis (gen24, 2026-07-12): what the act may claim"
+    - title: "What the transfer really proves"
+      plain: >-
+        Where the maths answer key exists, a student AI that simply copies it travels
+        just as well. SACRED's real distinction is that it needs no answer key and
+        knows when to stop training on its own — and beyond a certain problem size,
+        answer keys stop existing altogether.
       ledger: experiments/gen24_distill.md
       items:
         - label: "Where labels exist, distillation wins"
@@ -275,14 +297,22 @@ quote_cards:
           quote: "**Adversarial self-play reaches comparable transfer WITHOUT labels and WITHOUT any validation signal** (1.73 select-on-train, 1.76 val-stopped: the two agree because it does not overfit)"
         - label: "The regime past the wall"
           quote: "past the enumeration wall (K >= 4, A4's regime) labels do not exist and validation-by-oracle is unavailable, so self-play is the only trainer on the board"
-    - title: "The mechanism, reattributed (A2/A3, 2026-07-12)"
+    - title: "How it really works — and how it survives bad intelligence"
+      plain: >-
+        The AI is not reading the danger map road by road: its protection comes from
+        understanding road geometry, learned across several cities. That is why feeding
+        it a completely wrong danger map barely hurts it.
       ledger: experiments/zst_map_robustness.md
       items:
         - label: "The binding wording rule"
           quote: "the generalist learns a geometry-informed, threat-robust calibrated hedge: its zero-shot advantage persists on threat fields decorrelated from geometry (1.80x vs random 2.19x) and is insensitive to threat-map observation error (a fully wrong map costs +0.03), but per-edge map-reading is not the mechanism (an information-free map costs +0.09)"
         - label: "Why this strengthens ZST-vs-LP"
           quote: "an exact solver requires the true instance model at decision time; the trained hedge keeps its edge with a wrong or absent map"
-    - title: "Causality sharpened (gen21 n=3 + the DR control, gen25)"
+    - title: "What actually causes the transfer"
+      plain: >-
+        Training on travel cost alone makes transfer WORSE than not training at all,
+        and mere exposure to random attacks is not enough either. It takes a thinking
+        enemy pushing back, run after run, for the AI to learn protection that travels.
       ledger: experiments/gen25_dr_control.md
       items:
         - label: "The vanilla control, tight"
@@ -293,7 +323,12 @@ quote_cards:
           ledger: experiments/gen16_multicity.md
           quote: "at an UNSEEN adversary budget (K=2) it tightens to 1.29x (beats random, 5/6 beat loss_det) and at an UNSEEN fleet size (N=5) it holds at 1.79x (beats random 2.10, 6/6 beat loss_det)"
   obj5:
-    - title: "Prevalence and the price of predictability (A8 + B3, 2026-07-12)"
+    - title: "Not a lucky map, and not a lucky rule"
+      plain: >-
+        Across 160 crossings in four cities, habits are expensive on most of them, and
+        our proving grounds were deliberately chosen among the hardest. The mission rule
+        is not cherry-picked either: it is the one rule a predictable planner cannot
+        escape by simply spreading its convoys out.
       ledger: experiments/a6_a7_a8_completions.md
       items:
         - label: "How often calibrated mixing matters"

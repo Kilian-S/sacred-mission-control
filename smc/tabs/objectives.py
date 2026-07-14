@@ -1,11 +1,16 @@
-"""The Objectives tab: six exhibits, each pairing the verbatim objective text
-from the assessed literature review (quoted via THESIS_STORYLINE.md, provenance
-tested) with an interactive demonstration of how the project met it."""
+"""The Objectives tab: six promises, six demonstrations.
+
+Story first (REDESIGN.md §3.3): each exhibit opens with a plain headline and a
+plain verdict; the verbatim promise and every ledger quote sit one click away
+in "From the record" disclosures. All maths stays exactly as verified; only the
+language and presentation changed.
+"""
 
 from __future__ import annotations
 
 import numpy as np
 import yaml
+from matplotlib.ticker import PercentFormatter
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
@@ -23,14 +28,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .. import theme
+from .. import lexicon, theme
 from ..sacred_bridge import gen_charts
 from ..sacred_bridge import maps as maps_bridge
 from ..sacred_bridge import oracle as oracle_bridge
 from ..sacred_bridge import policies
 from ..sacred_bridge.paths import DATA_DIR, RUNS_DIR, SACRED_ROOT
 from ..sacred_bridge.runs import (
-    GENERALIST_HISTORY_FIELDS,
     MULTICONVOY_HISTORY_FIELDS,
     HistorySeries,
     multiconvoy_result,
@@ -39,6 +43,7 @@ from ..sacred_bridge.runs import (
 from ..widgets.cards import Card, EraBadge, StateLabel
 from ..widgets.charts import ChartWidget
 from ..widgets.export import Exportable, export_widget_grab
+from ..widgets.human import HeroNumber, RecordDisclosure
 from ..widgets.mapview import MapView
 from ..workers import run_in_background
 
@@ -47,10 +52,28 @@ def _exhibit_data() -> dict:
     return yaml.safe_load((DATA_DIR / "exhibits.yaml").read_text())
 
 
-class ExhibitBase(QWidget):
-    """Scrollable exhibit page with the verbatim objective header."""
+def _pct_axis(ax, axis: str = "y") -> None:
+    fmt = PercentFormatter(xmax=1.0, decimals=0)
+    (ax.yaxis if axis == "y" else ax.xaxis).set_major_formatter(fmt)
 
-    def __init__(self, obj_quote: str, verdict: str, parent=None):
+
+class _Disclosure(RecordDisclosure):
+    """A RecordDisclosure with a custom collapsed title (e.g. the promise)."""
+
+    def __init__(self, title: str, parent=None):
+        self._title = title
+        super().__init__(parent)
+        self.toggle.setText(f"{title} ▸")
+
+    def _toggled(self, on: bool) -> None:
+        self.toggle.setText(f"{self._title} {'▾' if on else '▸'}")
+        self.body.setVisible(on)
+
+
+class ExhibitBase(QWidget):
+    """Scrollable exhibit page: plain headline, plain verdict, promise-on-demand."""
+
+    def __init__(self, headline: str, promise_quote: str, verdict: str, parent=None):
         super().__init__(parent)
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -60,24 +83,22 @@ class ExhibitBase(QWidget):
         host = QWidget()
         self.lay = QVBoxLayout(host)
         self.lay.setContentsMargins(4, 0, 12, 12)
-        self.lay.setSpacing(10)
+        self.lay.setSpacing(12)
         scroll.setWidget(host)
 
         head = Card()
-        q = QLabel(obj_quote)
-        q.setTextFormat(Qt.MarkdownText)
-        q.setWordWrap(True)
-        q.setStyleSheet(
-            f"font-size: 16px; font-style: italic; background: {theme.PAGE};"
-            f"border-left: 3px solid {theme.BLUE}; border-radius: 4px; padding: 8px 10px;")
-        head.layout_().addWidget(q)
-        src = QLabel("the promise, verbatim · THESIS_STORYLINE.md (literature review §2.2)")
-        src.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 12px;")
-        head.layout_().addWidget(src)
+        h = QLabel(headline)
+        h.setProperty("h2", True)
+        h.setWordWrap(True)
+        head.layout_().addWidget(h)
         v = QLabel(verdict)
         v.setWordWrap(True)
-        v.setStyleSheet("font-weight: 600; font-size: 15px;")
+        v.setStyleSheet("font-size: 15px;")
         head.layout_().addWidget(v)
+        promise = _Disclosure("The promise, in the project's own words")
+        promise.add_quote(promise_quote,
+                          "THESIS_STORYLINE.md (the assessed literature review, §2.2)")
+        head.layout_().addWidget(promise)
         self.lay.addWidget(head)
         self._built = False
 
@@ -89,39 +110,32 @@ class ExhibitBase(QWidget):
         if title:
             t = QLabel(title)
             t.setProperty("h3", True)
+            t.setWordWrap(True)
             c.layout_().addWidget(t)
         self.lay.addWidget(c)
         return c
 
     def add_quote_cards(self, key: str) -> None:
-        """Render this exhibit's provenance-tested ledger quote cards
-        (data/exhibits.yaml `quote_cards`, verbatim-enforced by tests)."""
+        """Plain sentence first; the verbatim ledger quotes one click away."""
         for spec in _exhibit_data().get("quote_cards", {}).get(key, []):
             c = self.card(spec["title"])
+            plain = spec.get("plain", "")
+            if plain:
+                lead = QLabel(plain)
+                lead.setWordWrap(True)
+                lead.setStyleSheet("font-size: 15px;")
+                c.layout_().addWidget(lead)
+            rd = RecordDisclosure()
             for item in spec["items"]:
-                lab = QLabel(item["label"])
-                lab.setStyleSheet(
-                    f"color: {theme.INK_SECONDARY}; font-size: 13px; font-weight: 700;"
-                    "text-transform: uppercase; letter-spacing: 0.04em;")
-                body = QLabel(item["quote"])
-                body.setTextFormat(Qt.MarkdownText)
-                body.setWordWrap(True)
-                body.setTextInteractionFlags(Qt.TextSelectableByMouse)
-                body.setStyleSheet(
-                    f"font-size: 15px; color: {theme.INK}; background: {theme.PAGE};"
-                    f"border-left: 3px solid {theme.BASELINE}; border-radius: 4px;"
-                    "padding: 8px 10px;")
-                src = QLabel("ledger: " + item.get("ledger", spec["ledger"]))
-                src.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 12px;")
-                c.layout_().addWidget(lab)
-                c.layout_().addWidget(body)
-                c.layout_().addWidget(src)
+                rd.add_line(item["label"])
+                rd.add_quote(item["quote"], item.get("ledger", spec["ledger"]))
+            c.layout_().addWidget(rd)
 
 
 # ===================================================================== Obj 1
 
 class Obj1Exhibit(ExhibitBase):
-    """The game made tangible: mixture slider vs live exploitability."""
+    """The game made tangible: mixing slider vs live catch-chance."""
 
     def build(self) -> None:
         if self._built:
@@ -129,7 +143,12 @@ class Obj1Exhibit(ExhibitBase):
         self._built = True
         self._inst = None
 
-        c = self.card("Slide from deterministic to calibrated mixing (33-71, hard interception)")
+        c = self.card("How does the convoy pick its road?")
+        intro = QLabel(
+            "Drag the slider. The enemy watches long enough to learn whatever habit "
+            "you settle into, then places its ambush accordingly.")
+        intro.setWordWrap(True)
+        c.layout_().addWidget(intro)
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setRange(0, 200)
         self.slider.setValue(0)
@@ -138,33 +157,37 @@ class Obj1Exhibit(ExhibitBase):
         lab_row = QWidget()
         lr = QHBoxLayout(lab_row)
         lr.setContentsMargins(0, 0, 0, 0)
-        for txt, align in (("deterministic (shortest path)", Qt.AlignLeft),
-                           ("uniform noise", Qt.AlignCenter),
-                           ("equilibrium (calibrated)", Qt.AlignRight)):
+        for txt, align in (("always the same road", Qt.AlignLeft),
+                           ("coin flip", Qt.AlignCenter),
+                           ("the proven mix", Qt.AlignRight)):
             l = QLabel(txt)
             l.setAlignment(align)
             l.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 12px;")
             lr.addWidget(l)
         c.layout_().addWidget(lab_row)
-        self.readout = QLabel("Solving the game…")
-        self.readout.setWordWrap(True)
-        c.layout_().addWidget(self.readout)
-        self.curve = ChartWidget(title="obj1-exploitability-curve", height=2.6, width=7.0)
+        self.hero = HeroNumber(
+            "chance of being caught · once the enemy learns your habits",
+            "computed live · the lone-convoy run, Kaliningrad")
+        c.layout_().addWidget(self.hero)
+        self.curve = ChartWidget(title="obj1-catch-curve", height=2.6, width=7.0)
         c.layout_().addWidget(self.curve)
-        self.saddle = ChartWidget(title="obj1-attacker-options", height=2.6, width=7.0)
-        c2 = self.card("The attacker's options against your mixture")
+
+        c2 = self.card("Every ambush option pays the enemy the same — "
+                       "that is why the mix cannot be beaten")
+        self.saddle = ChartWidget(title="obj1-ambush-options", height=2.6, width=7.0)
         c2.layout_().addWidget(self.saddle)
         note = QLabel(
-            "At the equilibrium every attacker option on the support yields the same "
-            "interception: the mixture makes the adversary indifferent. That saddle point "
-            "is the solution concept every SACRED result is scored against.")
+            "At the proven mix, every ambush the enemy could pick would catch exactly "
+            "the same share of convoys. There is nothing left to exploit: that balance "
+            "point is what every SACRED result in this app is measured against.")
         note.setWordWrap(True)
         c2.layout_().addWidget(note)
 
         self.add_quote_cards("obj1")
         run_in_background(
             oracle_bridge.build_instance, "kaliningrad", "33", "71", 1, 1, 8, None,
-            on_done=self._ready, on_fail=lambda tb: self.readout.setText("Solve failed."))
+            on_done=self._ready,
+            on_fail=lambda tb: self.hero.set_caption("The live solve failed."))
 
     def _ready(self, inst) -> None:
         self._inst = inst
@@ -174,7 +197,6 @@ class Obj1Exhibit(ExhibitBase):
         self._d_short = short
         self._d_uniform = np.full(R, 1.0 / R)
         self._d_eq = inst.sc_defender
-        # precompute the exploitability curve along the slider path
         xs, es = [], []
         for t in range(0, 201, 2):
             d = self._mix(t)
@@ -200,21 +222,22 @@ class Obj1Exhibit(ExhibitBase):
         t = self.slider.value()
         d = self._mix(t)
         j, e = inst.exploitability_routes(d)
-        self.readout.setText(
-            f"Your mixture's interception under the best response: <b>{e:.3f}</b> "
-            f"(deterministic {inst.sc_loss_det:.3f}, equilibrium {inst.sc_value:.3f}) · computed live")
+        self.hero.set_value(e)
+
         ax = self.curve.clear()
         xs, es = self._curve
         ax.plot(xs, es, color=theme.BLUE, linewidth=2.0)
         ax.plot([t], [e], "o", color=theme.INK, markersize=7, zorder=5)
         ax.axhline(inst.sc_value, color=theme.STRATEGY_COLOURS["equilibrium"],
                    linestyle=":", linewidth=1.0)
-        ax.annotate(f"equilibrium {inst.sc_value:.3f}", xy=(0.02, inst.sc_value),
-                    xycoords=("axes fraction", "data"), fontsize=10,
-                    color=theme.STRATEGY_COLOURS["equilibrium"], va="bottom")
-        ax.set_xticks([0, 100, 200], ["deterministic", "uniform", "equilibrium"])
-        ax.set_ylabel("exploitability")
-        self.curve.set_caption("interception of your mixture under the oracle best response", "live")
+        ax.annotate(f"{lexicon.GOALPOST_LEFT} · {lexicon.pct(inst.sc_value)}",
+                    xy=(0.02, inst.sc_value), xycoords=("axes fraction", "data"),
+                    fontsize=10, color=theme.STRATEGY_COLOURS["equilibrium"], va="bottom")
+        ax.set_xticks([0, 100, 200],
+                      ["always the\nsame road", "coin flip", "the proven mix"])
+        ax.set_ylabel("chance of being caught")
+        _pct_axis(ax)
+        self.curve.set_caption("your habit, and what it costs you", "live")
         self.curve.redraw()
 
         ax2 = self.saddle.clear()
@@ -224,23 +247,25 @@ class Obj1Exhibit(ExhibitBase):
         ax2.bar(range(len(yields)), yields, color=cols, width=0.8)
         ax2.axhline(inst.sc_value, color=theme.STRATEGY_COLOURS["equilibrium"],
                     linestyle=":", linewidth=1.0)
-        ax2.set_xlabel("attacker option (interdiction set)")
-        ax2.set_ylabel("expected interception")
+        ax2.set_xlabel("each possible ambush")
+        ax2.set_ylabel("what it would catch")
+        _pct_axis(ax2)
         self.saddle.set_caption(
-            "orange = the attacker's best response to your current mixture", "live")
+            "orange = the ambush the enemy would actually pick against your current habit",
+            "live")
         self.saddle.redraw()
 
 
 # ===================================================================== Obj 2
 
 class Obj2Exhibit(ExhibitBase):
-    """The city pipeline and the environment itself."""
+    """Any city becomes a game board."""
 
     def build(self) -> None:
         if self._built:
             return
         self._built = True
-        c = self.card("Any city, its arterial extraction and intrinsic threat map")
+        c = self.card("Pick any city — see its roads and their danger")
         row = QWidget()
         rl = QHBoxLayout(row)
         rl.setContentsMargins(0, 0, 0, 0)
@@ -256,12 +281,13 @@ class Obj2Exhibit(ExhibitBase):
         self.map = MapView()
         self.map.setMinimumHeight(420)
         c.layout_().addWidget(self.map)
-        cap = QLabel("threat map computed live: edge length mapped into the band (0.15, 0.95), "
-                     "normalised over the whole graph (the env's absolute_vuln_norm)")
+        cap = QLabel("computed live · how dangerous each road is, worked out "
+                     "from road lengths the moment you pick the city")
         cap.setStyleSheet(f"color: {theme.LIVE_ACCENT}; font-size: 12px; font-weight: 600;")
         c.layout_().addWidget(cap)
 
-        fig_card = self.card("The extraction pipeline (arterial filter + 30 m consolidation)")
+        fig_card = self.card("From map data to game board: keep the main roads, "
+                             "then simplify the junctions")
         for f in ("assets/kaliningrad_filter_compare.png",
                   "assets/kaliningrad_consolidated_compare.png"):
             p = SACRED_ROOT / f
@@ -272,7 +298,7 @@ class Obj2Exhibit(ExhibitBase):
                     pl.setPixmap(pm.scaledToWidth(820, Qt.SmoothTransformation))
                     fig_card.layout_().addWidget(pl)
                 capf = QLabel(f"figure: {f}")
-                capf.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 12px;")
+                capf.setProperty("fineprint", True)
                 fig_card.layout_().addWidget(capf)
         self._load_city()
 
@@ -306,29 +332,41 @@ class Obj2Exhibit(ExhibitBase):
         self.map.fit_all()
         registered = city in maps_bridge.REGISTERED_CITIES
         self.stats.setText(
-            f"{n_nodes} nodes · {n_edges} edges"
-            + ("" if registered else " · not oracle-screened; no banked results"))
+            f"{n_nodes} junctions · {n_edges} road segments"
+            + ("" if registered else " · no measured results on this map yet"))
 
 
 # ===================================================================== Obj 3
 
+# plain names for the training-run families (technical id, glob, era kept as data)
 _OBJ3_FAMILIES = {
-    "gen13_lock (the lock, 3 seeds)": ("gen13_lock", "seed*.json", "post-fix"),
-    "gen14_evidence (n=10)": ("gen14_evidence", "mc_seed*.json", "post-fix"),
-    "gen17_lastiterate (annealed tau, fails to hold)": ("gen17_lastiterate", "seed*.json", "post-fix"),
-    "gen18_learnedfollower (the coordination boundary)": ("gen18_learnedfollower", "seed*.json", "post-fix"),
-    "gen09_multiconvoy (the pre-fix lock)": ("gen09_multiconvoy", "headline_seed*.json", "pre-fix"),
+    "The proving ground — the final three runs":
+        ("gen13_lock", "seed*.json", "post-fix"),
+    "The proving ground — the ten-run evidence set":
+        ("gen14_evidence", "mc_seed*.json", "post-fix"),
+    "Trying to hold the final version steady (it would not)":
+        ("gen17_lastiterate", "seed*.json", "post-fix"),
+    "Teaching convoys to follow each other (it did not take)":
+        ("gen18_learnedfollower", "seed*.json", "post-fix"),
+    "The old proving ground (before the bug fix)":
+        ("gen09_multiconvoy", "headline_seed*.json", "pre-fix"),
 }
 
 
 class Obj3Exhibit(ExhibitBase):
-    """Training dynamics replayed: TAP, drift, temperatures, FP cycling."""
+    """One story chart by default; the machinery behind an expert view."""
 
     def build(self) -> None:
         if self._built:
             return
         self._built = True
-        c = self.card("Training dynamics, replayed from the run artefacts")
+        c = self.card("Watch it learn — and watch us keep the best version")
+        intro = QLabel(
+            "Each line is one training run. The chance of mission failure falls as the "
+            "AI practises against the enemy; train too long and it over-trains, so the "
+            "project always keeps the best version, never the last one.")
+        intro.setWordWrap(True)
+        c.layout_().addWidget(intro)
         row = QWidget()
         rl = QHBoxLayout(row)
         rl.setContentsMargins(0, 0, 0, 0)
@@ -341,36 +379,46 @@ class Obj3Exhibit(ExhibitBase):
         rl.addLayout(self.era_badge_host)
         rl.addStretch(1)
         c.layout_().addWidget(row)
-        self.family_state = StateLabel("Loading run artefacts…", "loading")
+        self.family_state = StateLabel("Loading the training record…", "loading")
         c.layout_().addWidget(self.family_state)
-        self.traj = ChartWidget(title="obj3-tap", height=3.0, width=7.4)
+        self.traj = ChartWidget(title="obj3-learning", height=3.2, width=7.4)
         c.layout_().addWidget(self.traj)
-        self.temps = ChartWidget(title="obj3-temperatures", height=2.4, width=7.4)
-        c.layout_().addWidget(self.temps)
 
-        anim_card = self.card("Fictitious-play cycling: the policy's occupancy distribution, eval by eval")
+        # ---- everything technical lives behind the expert view
+        expert_card = self.card("")
+        self.expert = _Disclosure("Expert view — temperatures, the strategy replay, "
+                                  "and the expert-examples experiment")
+        expert_card.layout_().addWidget(self.expert)
+
+        self.temps = ChartWidget(title="obj3-temperatures", height=2.4, width=7.2)
+        self.expert.body_lay.addWidget(self.temps)
+
         bar_row = QWidget()
         brl = QHBoxLayout(bar_row)
         brl.setContentsMargins(0, 0, 0, 0)
-        self.play_btn = QPushButton("▶ Replay drift (Space)")
+        self.play_btn = QPushButton("▶ Replay how its strategy shifts (Space)")
         self.play_btn.clicked.connect(self.toggle_play)
         brl.addWidget(self.play_btn)
         self.anim_label = QLabel("")
         brl.addWidget(self.anim_label)
         brl.addStretch(1)
-        anim_card.layout_().addWidget(bar_row)
-        self.anim_chart = ChartWidget(title="obj3-fp-animation", height=2.8, width=7.4)
-        anim_card.layout_().addWidget(self.anim_chart)
+        self.expert.body_lay.addWidget(bar_row)
+        self.anim_chart = ChartWidget(title="obj3-strategy-replay", height=2.8, width=7.2)
+        self.expert.body_lay.addWidget(self.anim_chart)
 
-        erb_card = self.card("ERB bootstrapping, measured (gen23: seeded vs cold)")
-        self.erb_state = StateLabel("Loading the gen23 run artefacts…", "loading")
-        erb_card.layout_().addWidget(self.erb_state)
-        self.erb_chart = ChartWidget(title="obj3-erb-gen23", height=2.8, width=7.4)
-        erb_card.layout_().addWidget(self.erb_chart)
+        erb_head = QLabel("The expert-examples experiment, run by run")
+        erb_head.setProperty("h3", True)
+        self.expert.body_lay.addWidget(erb_head)
+        self.erb_state = StateLabel("Loading the experiment record…", "loading")
+        self.expert.body_lay.addWidget(self.erb_state)
+        self.erb_chart = ChartWidget(title="obj3-expert-examples", height=2.8, width=7.2)
+        self.expert.body_lay.addWidget(self.erb_chart)
+
         self.add_quote_cards("obj3")
         run_in_background(gen_charts.load_gen_chart, "gen23",
                           on_done=self._erb_ready,
-                          on_fail=lambda tb: self.erb_state.setText("gen23 artefacts failed to load."))
+                          on_fail=lambda tb: self.erb_state.setText(
+                              "The experiment record failed to load."))
 
         self._pol_hist = None
         self._anim_i = 0
@@ -385,30 +433,32 @@ class Obj3Exhibit(ExhibitBase):
             return
         self.erb_state.hide()
         ax = self.erb_chart.clear()
+        run_no = {"cold": 0, "seeded": 0}
         for s in payload["series"]:
             seeded = s.get("arm") == "seeded"
+            key = "seeded" if seeded else "cold"
+            run_no[key] += 1
             colour = theme.STRATEGY_COLOURS["vanilla"] if seeded else theme.STRATEGY_COLOURS["sacred"]
-            ax.plot(s["x"], s["y"], color=colour, linewidth=1.6, alpha=0.8,
-                    label=s["label"] if s["label"].endswith("seed 0") else None)
+            label = None
+            if run_no[key] == 1:
+                label = "shown expert examples first" if seeded else "fresh start"
+            ax.plot(s["x"], s["y"], color=colour, linewidth=1.6, alpha=0.8, label=label)
         refs = payload.get("refs", {})
-        if "competence bar" in refs:
-            ax.axhline(refs["competence bar"], color=theme.INK_MUTED, linestyle="--", linewidth=1.1)
-            ax.annotate(f"competence bar {refs['competence bar']:.2f}",
-                        xy=(1.0, refs["competence bar"]), xycoords=("axes fraction", "data"),
-                        fontsize=10, ha="right", va="bottom", color=theme.INK_MUTED)
         if "equilibrium" in refs:
             ax.axhline(refs["equilibrium"], color=theme.STRATEGY_COLOURS["equilibrium"],
                        linestyle=":", linewidth=1.0)
-            ax.annotate(f"equilibrium {refs['equilibrium']:.3f}", xy=(0.0, refs["equilibrium"]),
-                        xycoords=("axes fraction", "data"), fontsize=10, va="bottom",
+            ax.annotate(f"{lexicon.GOALPOST_LEFT} · {lexicon.pct(refs['equilibrium'])}",
+                        xy=(0.0, refs["equilibrium"]), xycoords=("axes fraction", "data"),
+                        fontsize=10, va="bottom",
                         color=theme.STRATEGY_COLOURS["equilibrium"])
-        ax.set_xlabel("sortie")
-        ax.set_ylabel("exploitability (TAP)")
+        ax.set_xlabel("practice runs")
+        ax.set_ylabel("chance the mission fails")
+        _pct_axis(ax)
         ax.legend(fontsize=10.5)
         self.erb_chart.set_caption(
-            "yellow = ERB-seeded (ALNS demonstrations), blue = cold: the cold arms dive under "
-            "the bar, the seeded arms never do · source: models/runs/gen23_c1 "
-            "(gen23_c1_erb.md)", "ledger")
+            "three runs each way · blue = fresh start, yellow = shown the professional "
+            "planner's examples first · source: models/runs/gen23_c1 (gen23_c1_erb.md)",
+            "ledger")
         self.erb_chart.redraw()
 
     def _load_family(self) -> None:
@@ -420,11 +470,10 @@ class Obj3Exhibit(ExhibitBase):
                 w.deleteLater()
         self.era_badge_host.addWidget(EraBadge(era))
         self._timer.stop()
-        # the previous family's curves must not linger under the new era badge
         for chart in (self.traj, self.temps, self.anim_chart):
             chart.clear()
             chart.redraw()
-        self.family_state.setText("Loading run artefacts…")
+        self.family_state.setText("Loading the training record…")
         self.family_state.show()
         run_in_background(self._family_worker, family, glob,
                           on_done=lambda result, wanted=label: self._family_ready(result, wanted),
@@ -432,7 +481,7 @@ class Obj3Exhibit(ExhibitBase):
 
     def _family_failed(self, wanted: str) -> None:
         if wanted == self.family_combo.currentText():
-            self.family_state.setText("Run artefacts failed to load for this family.")
+            self.family_state.setText("The training record failed to load.")
             self.family_state.show()
 
     @staticmethod
@@ -452,11 +501,8 @@ class Obj3Exhibit(ExhibitBase):
                 "label": p.stem,
                 "sortie": hs.col("sortie"),
                 "expl_tap": hs.col("expl_tap"),
-                "expl": hs.col("expl"),
                 "alpha_leader": hs.col("alpha_leader"),
                 "alpha_foll": hs.col("alpha_foll"),
-                "stack": hs.col("stack_rate"),
-                "follow": hs.col("follow_rate"),
                 "best": res.get("best_tap"),
                 "best_at": res.get("best_tap_sortie"),
             })
@@ -471,9 +517,9 @@ class Obj3Exhibit(ExhibitBase):
     def _family_ready(self, result, wanted: str = "") -> None:
         family, series, pol_hist, refs = result
         if wanted and wanted != self.family_combo.currentText():
-            return  # the combo moved on; a pre-fix payload must not sit under a post-fix badge
+            return  # the combo moved on; wrong-era curves must not linger
         if not series:
-            self.family_state.setText("No run artefacts found for this family.")
+            self.family_state.setText("No training record found for this family.")
             self.family_state.show()
             return
         self.family_state.hide()
@@ -482,23 +528,42 @@ class Obj3Exhibit(ExhibitBase):
         palette = theme.CATEGORICAL
         ax = self.traj.clear()
         many = len(series) > 6
+        best_marked = False
         for i, s in enumerate(series):
             colour = theme.BLUE if many else palette[i % len(palette)]
             ax.plot(s["sortie"], s["expl_tap"], color=colour, alpha=0.55 if many else 1.0,
-                    linewidth=1.5, label=None if many else s["label"])
+                    linewidth=1.5, label=None if many else f"run {i + 1}")
             if s["best"] is not None and s["best_at"] is not None:
                 ax.plot([s["best_at"]], [s["best"]], "o", color=colour, markersize=6,
                         markeredgecolor="white", zorder=5)
+                if not best_marked:
+                    ax.annotate("the version we keep", xy=(s["best_at"], s["best"]),
+                                xytext=(10, -16), textcoords="offset points",
+                                fontsize=10.5, color=theme.INK,
+                                arrowprops=dict(arrowstyle="-", color=theme.INK_MUTED,
+                                                lw=0.8))
+                    best_marked = True
+        # one annotation for the drift, placed at the end of the first run
+        s0 = series[0]
+        if s0["sortie"]:
+            ax.annotate("over-training — discarded", xy=(s0["sortie"][-1], s0["expl_tap"][-1]),
+                        xytext=(-10, 12), textcoords="offset points", ha="right",
+                        fontsize=10.5, color=theme.INK_MUTED)
         if "equilibrium" in refs:
             ax.axhline(refs["equilibrium"], color=theme.STRATEGY_COLOURS["equilibrium"],
                        linestyle=":", linewidth=1.0)
-        ax.set_xlabel("sortie")
-        ax.set_ylabel("exploitability (TAP)")
+            ax.annotate(f"{lexicon.GOALPOST_LEFT} · {lexicon.pct(refs['equilibrium'])}",
+                        xy=(0.0, refs["equilibrium"]), xycoords=("axes fraction", "data"),
+                        fontsize=10, va="bottom",
+                        color=theme.STRATEGY_COLOURS["equilibrium"])
+        ax.set_xlabel("practice runs")
+        ax.set_ylabel("chance the mission fails")
+        _pct_axis(ax)
         if not many:
             ax.legend(fontsize=10)
         self.traj.set_caption(
-            f"dots = best checkpoints (the deployable object); the later drift toward uniform "
-            f"is the disclosed last-iterate FP cycling · source: models/runs/{family}", "ledger")
+            f"dots = the versions the project keeps · source: models/runs/{family}",
+            "ledger")
         self.traj.redraw()
 
         ax2 = self.temps.clear()
@@ -508,19 +573,23 @@ class Obj3Exhibit(ExhibitBase):
             if any(v for v in s["alpha_foll"]):
                 ax2.plot(s["sortie"], s["alpha_foll"], color=colour, linewidth=1.1,
                          linestyle="--", alpha=0.7)
-        ax2.set_xlabel("sortie")
+        ax2.set_xlabel("practice runs")
         ax2.set_ylabel("SAC temperature α")
-        self.temps.set_caption("solid = leader alpha, dashed = follower alpha", "ledger")
+        self.temps.set_caption(
+            "how much the AI explores over time (solid = leader, dashed = follower)",
+            "ledger")
         self.temps.redraw()
         self._draw_anim_frame()
 
     def toggle_play(self) -> None:
+        if not self.expert.toggle.isChecked():
+            return  # the replay lives in the expert view
         if self._timer.isActive():
             self._timer.stop()
-            self.play_btn.setText("▶ Replay drift (Space)")
+            self.play_btn.setText("▶ Replay how its strategy shifts (Space)")
         else:
             if not self._pol_hist:
-                self.anim_label.setText("no pol_hist saved for this family")
+                self.anim_label.setText("no strategy snapshots saved for this family")
                 return
             self._timer.start()
             self.play_btn.setText("⏸ Pause (Space)")
@@ -533,41 +602,59 @@ class Obj3Exhibit(ExhibitBase):
 
     def _draw_anim_frame(self) -> None:
         if not self._pol_hist:
-            self.anim_label.setText("no pol_hist saved for this family")
+            self.anim_label.setText("no strategy snapshots saved for this family")
             return
         dist = np.asarray(self._pol_hist[self._anim_i], dtype=float)
         ax = self.anim_chart.clear()
         ax.bar(range(len(dist)), dist, color=theme.BLUE, width=1.0)
-        ax.set_xlabel("occupancy (joint fleet placement)")
-        ax.set_ylabel("probability")
+        ax.set_xlabel("every possible way to place the fleet")
+        ax.set_ylabel("how often it is played")
+        _pct_axis(ax)
         ax.set_ylim(0, max(0.35, float(dist.max()) * 1.15))
-        self.anim_label.setText(f"eval {self._anim_i}/{len(self._pol_hist) - 1} (seed 0)")
+        self.anim_label.setText(
+            f"snapshot {self._anim_i} of {len(self._pol_hist) - 1} (run 1)")
         self.anim_chart.set_caption(
-            "the policy's mixed strategy over occupancies, per eval: concentrate onto the "
-            "hedge, then over-train toward uniform", "ledger")
+            "the AI's strategy over training: it concentrates on the smart hedge, "
+            "then over-trains toward pure randomness — which is why we keep the best "
+            "version, not the last", "ledger")
         self.anim_chart.redraw()
 
 
 # ===================================================================== Obj 4
 
 class Obj4Exhibit(ExhibitBase):
-    """The design-space explorer + the live acquisition race."""
+    """Where should the base go? Told as three steps on the map."""
 
     def build(self) -> None:
         if self._built:
             return
         self._built = True
-        data = _exhibit_data()
 
-        c = self.card("The surrogate: predicted vs true design quality (F3, 450 designs)")
-        self.scatter = ChartWidget(title="obj4-surrogate-scatter", height=3.2, width=7.2)
+        # ---- step 1: the design space on the map
+        c = self.card("Step 1 · Every possible base site, scored by the game")
+        intro = QLabel(
+            "Each dot is a possible base location in Kaliningrad. Its colour is the "
+            "mission-failure chance the game assigns to basing there: darker means "
+            "riskier. Finding the best dot is the design problem.")
+        intro.setWordWrap(True)
+        c.layout_().addWidget(intro)
+        self.sites_chart = ChartWidget(title="obj4-base-sites", height=4.4, width=7.2)
+        c.layout_().addWidget(self.sites_chart)
+        self.sites_state = StateLabel("Drawing the design space…", "loading")
+        c.layout_().addWidget(self.sites_state)
+
+        scatter_head = QLabel("The shortcut model that scores sites instantly — "
+                              "click any point to see that site as a live game")
+        scatter_head.setProperty("h3", True)
+        c.layout_().addWidget(scatter_head)
+        self.scatter = ChartWidget(title="obj4-shortcut-model", height=3.0, width=7.2)
         c.layout_().addWidget(self.scatter)
-        self.design_label = QLabel("Click a point to see that design as a game on the map below.")
+        self.design_label = QLabel("")
         self.design_label.setWordWrap(True)
         c.layout_().addWidget(self.design_label)
         self.design_map = MapView()
         self.design_map.setMinimumHeight(360)
-        self.design_map.hide()  # appears with the first clicked design
+        self.design_map.hide()
         c.layout_().addWidget(self.design_map)
         self.design_caption = QLabel("")
         self.design_caption.setWordWrap(True)
@@ -577,85 +664,211 @@ class Obj4Exhibit(ExhibitBase):
         self._design_seq = 0
         self._design_city_loaded = False
 
-        c2 = self.card("The acquisition loop, raced live against random search")
+        # ---- step 2: the search
+        c2 = self.card("Step 2 · Smart search vs blind search: the best site "
+                       "in a few dozen tries")
         row = QWidget()
         rl = QHBoxLayout(row)
         rl.setContentsMargins(0, 0, 0, 0)
-        self.race_btn = QPushButton("Run the loop live")
+        self.race_btn = QPushButton("Run the search live")
         self.race_btn.setProperty("accent", True)
         self.race_btn.clicked.connect(self._run_race)
         rl.addWidget(self.race_btn)
-        self.race_label = QLabel("Press “Run the loop live” to race the surrogate against random search.")
+        self.race_label = QLabel("Press the button: the smart search races blind luck, "
+                                 "right now, on this machine.")
         rl.addWidget(self.race_label, 1)
         c2.layout_().addWidget(row)
-        self.race_chart = ChartWidget(title="obj4-acquisition-race", height=3.0, width=7.2)
+        self.race_chart = ChartWidget(title="obj4-search-race", height=3.0, width=7.2)
         c2.layout_().addWidget(self.race_chart)
+        self.banked_chart = ChartWidget(title="obj4-recorded-race", height=2.6, width=7.2)
+        c2.layout_().addWidget(self.banked_chart)
 
-        c3 = self.card("D1 (banked) and D3 (the composite)")
-        self.banked_chart = ChartWidget(title="obj4-d1-banked", height=2.6, width=7.2)
-        c3.layout_().addWidget(self.banked_chart)
+        # ---- step 3: together vs one-at-a-time (B1)
+        c3 = self.card("Step 3 · Decide everything together, or one thing at a time?")
+        b1_intro = QLabel(
+            "A real base decision is three decisions at once: where to put it, how many "
+            "convoys to run, and which roads to reinforce. Deciding them together never "
+            "did worse than the classical one-at-a-time approach — and for one of the "
+            "two trained AIs, one-at-a-time left 19% of the achievable safety on the table.")
+        b1_intro.setWordWrap(True)
+        c3.layout_().addWidget(b1_intro)
+        self.b1_chart = ChartWidget(title="obj4-together-vs-sequential", height=2.6, width=7.2)
+        c3.layout_().addWidget(self.b1_chart)
+        b1_note = QLabel(
+            "Shown as numbers rather than map sites: the project artefact records the "
+            "outcomes of each search, not the coordinates of the chosen designs.")
+        b1_note.setProperty("fineprint", True)
+        b1_note.setWordWrap(True)
+        c3.layout_().addWidget(b1_note)
+
+        # ---- pricing designs against the deployed AI (D3, plain)
+        c4 = self.card("And the part no equation-solver can do")
         d3_label = QLabel(
-            "D3, the composite over the TRAINED generalist: held-out Spearman <b>0.959</b>; "
-            "policy-target vs oracle-target rank correlation <b>0.768</b>: designing against "
-            "the deployed policy differs measurably from designing against the equilibrium "
-            "abstraction, and only the RL + surrogate loop can do the former. On the "
-            "never-trained city the correlation is <b>0.11-0.44 per seed</b> (the A5 "
-            "reliability check; per-seed presentation mandated, see the cards below).")
+            "The same shortcut-model trick can score every design against the AI you "
+            "will actually deploy, rather than against the abstract mathematics. The "
+            "two scorecards agree closely where the AI trained, and disagree enough to "
+            "matter in a never-seen city — which is exactly where you would want to "
+            "design against the real deployed player.")
         d3_label.setWordWrap(True)
-        c3.layout_().addWidget(d3_label)
-        d3_src = QLabel("ledger: experiments/d3_composite.md · artefact: models/runs/d3_composite.json")
-        d3_src.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 12px;")
-        c3.layout_().addWidget(d3_src)
+        c4.layout_().addWidget(d3_label)
+        d3_rd = RecordDisclosure()
+        d3_rd.add_line("the in-distribution composite (D3)")
+        d3_rd.add_quote(
+            "**Surrogate over the TRAINED generalist's operational exploitability: "
+            "held-out Spearman 0.959.**", "experiments/d3_composite.md")
+        d3_rd.add_quote(
+            "**policy-target vs oracle-target rank correlation across designs: 0.768** "
+            "- designing against the DEPLOYED policy is strongly but NOT perfectly "
+            "aligned with designing against the equilibrium abstraction",
+            "experiments/d3_composite.md")
+        d3_rd.add_line("on the never-seen city, per-seed (the A5 rule)")
+        d3_rd.add_quote("**0.109 (seed 0) / 0.443 (seed 1) / 0.433 (seed 2)**",
+                        "experiments/d3_gdansk.md")
+        c4.layout_().addWidget(d3_rd)
+
         self.add_quote_cards("obj4")
 
         run_in_background(self._load_worker, on_done=self._loaded,
-                          on_fail=lambda tb: self.design_label.setText("artefacts unavailable"))
+                          on_fail=lambda tb: self.sites_state.setText(
+                              "The design-space artefacts are unavailable."))
 
     @staticmethod
     def _load_worker():
         f3 = read_json(RUNS_DIR / "sbo_placement_demo.json")
         d1 = read_json(RUNS_DIR / "d1_sbo_loop.json")
-        return f3.data, d1.data
+        b1 = read_json(RUNS_DIR / "b1_integration_gap.json")
+        cm = maps_bridge.load_city("kaliningrad")
+        pos = cm.projected()
+        segments = []
+        for u, v, _l in cm.edges:
+            pu, pv = pos.get(u), pos.get(v)
+            if pu and pv:
+                segments.append([pu, pv])
+        return f3.data, d1.data, b1.data, pos, segments
 
     def _loaded(self, result) -> None:
-        f3, d1 = result
+        f3, d1, b1, pos, segments = result
         self._f3 = f3
+
+        # ---- step 1 map of base sites
+        if f3 and segments:
+            self.sites_state.hide()
+            from matplotlib.collections import LineCollection
+            ax = self.sites_chart.clear()
+            ax.add_collection(LineCollection(segments, colors=theme.GRID,
+                                             linewidths=0.7, zorder=1))
+            best_by_base: dict[str, float] = {}
+            for r in f3.get("rows", []):
+                s = str(r["od"]).split("-")[0]
+                y = float(r["y"])
+                if s not in best_by_base or y < best_by_base[s]:
+                    best_by_base[s] = y
+            xs, ys, vals = [], [], []
+            for s, y in best_by_base.items():
+                p = pos.get(s)
+                if p:
+                    xs.append(p[0])
+                    ys.append(p[1])
+                    vals.append(y)
+            if vals:
+                v = np.asarray(vals)
+                ranks = np.argsort(np.argsort(v)) / max(1, len(v) - 1)
+                colours = [theme.VULN_RAMP[min(len(theme.VULN_RAMP) - 1,
+                                               int(q * len(theme.VULN_RAMP)))]
+                           for q in ranks]
+                order = np.argsort(-v)  # draw riskiest first so safe sites sit on top
+                ax.scatter(np.asarray(xs)[order], np.asarray(ys)[order],
+                           s=44, c=[colours[i] for i in order],
+                           edgecolors="white", linewidths=0.7, zorder=3)
+                i_best = int(np.argmin(v))
+                ax.annotate("the best site", xy=(xs[i_best], ys[i_best]),
+                            xytext=(12, -14), textcoords="offset points",
+                            fontsize=10.5, color=theme.INK,
+                            arrowprops=dict(arrowstyle="-", color=theme.INK_MUTED, lw=0.8))
+            ax.set_aspect("equal")
+            ax.invert_yaxis()
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.grid(False)
+            for spine in ax.spines.values():
+                spine.set_visible(False)
+            self.sites_chart.set_caption(
+                "each dot = a possible base site (its best fleet size), darker = riskier · "
+                "150 sites scored by the game "
+                "(f3_sbo_demonstrator.md; artefact sbo_placement_demo.json)", "ledger")
+            self.sites_chart.redraw()
+
+        # ---- the shortcut-model scatter (click to open a design)
         if f3:
             rows = f3["test_rows"]
             true = [r["true"] for r in rows]
             pred = [r["pred"] for r in rows]
             ax = self.scatter.clear()
-            self._sc = ax.scatter(true, pred, s=26, c=theme.BLUE, alpha=0.7, picker=5)
+            ax.scatter(true, pred, s=26, c=theme.BLUE, alpha=0.7, picker=5)
             lim = [min(true + pred), max(true + pred)]
             ax.plot(lim, lim, color=theme.BASELINE, linewidth=1.0, linestyle="--")
-            ax.set_xlabel("true equilibrium exploitability of the design")
-            ax.set_ylabel("surrogate prediction")
+            ax.set_xlabel("what the game actually says about a site")
+            ax.set_ylabel("what the shortcut model guessed")
+            _pct_axis(ax)
+            _pct_axis(ax, "x")
             self.scatter.set_caption(
-                "held-out designs · banked: RMSE 0.0222, Spearman 0.894, argmin regret 0.0000 "
+                "sites the model never saw · from the record: guesses within about two "
+                "percentage points, and it named the single best site correctly "
                 "(f3_sbo_demonstrator.md; artefact sbo_placement_demo.json)", "ledger")
             self.scatter.canvas.mpl_connect("pick_event", self._picked)
             self.scatter.redraw()
             self._test_rows = rows
+
+        # ---- the recorded race (D1)
         if d1:
             ax = self.banked_chart.clear()
             sbo = np.median(np.asarray(d1["sbo_curves"]), axis=0)
             rnd = np.median(np.asarray(d1["random_curves"]), axis=0)
             x = range(1, len(sbo) + 1)
-            ax.plot(x, sbo, color=theme.BLUE, linewidth=2.0, label="SBO (banked, D1)")
+            ax.plot(x, sbo, color=theme.BLUE, linewidth=2.0, label="smart search")
             ax.plot(x, rnd, color=theme.STRATEGY_COLOURS["uniform"], linewidth=2.0,
-                    label="random search (banked)")
+                    label="blind search")
             ax.axhline(d1["true_opt"], color=theme.STRATEGY_COLOURS["equilibrium"],
                        linestyle=":", linewidth=1.0)
-            ax.annotate(f"true optimum {d1['true_opt']:.3f}", xy=(0.02, d1["true_opt"]),
-                        xycoords=("axes fraction", "data"), fontsize=10, va="bottom",
+            ax.annotate(f"the best site · {lexicon.pct(d1['true_opt'])}",
+                        xy=(0.02, d1["true_opt"]), xycoords=("axes fraction", "data"),
+                        fontsize=10, va="bottom",
                         color=theme.STRATEGY_COLOURS["equilibrium"])
-            ax.set_xlabel("evaluations")
-            ax.set_ylabel("best design found")
+            ax.set_xlabel("designs tried")
+            ax.set_ylabel("best risk found so far")
+            _pct_axis(ax)
             ax.legend(fontsize=10.5)
             self.banked_chart.set_caption(
-                "banked D1 medians over 20 repeats: median 32.5 evaluations to the optimum vs "
-                "random never (d1_sbo_loop.md; artefact d1_sbo_loop.json)", "ledger")
+                "the project's recorded run of this race: the smart search reached the "
+                "best site in about 33 tries; blind search never did within 60 "
+                "(d1_sbo_loop.md; artefact d1_sbo_loop.json)", "ledger")
             self.banked_chart.redraw()
+
+        # ---- step 3 (B1)
+        if b1:
+            ax = self.b1_chart.clear()
+            labels = ["first trained AI", "second trained AI"]
+            together = [b1["actor0"]["joint_median"], b1["actor1"]["joint_median"]]
+            oneat = [b1["actor0"]["seq_median"], b1["actor1"]["seq_median"]]
+            xpos = np.arange(2)
+            width = 0.34
+            ax.bar(xpos - width / 2, together, width, color=theme.BLUE,
+                   label="decided together")
+            ax.bar(xpos + width / 2, oneat, width,
+                   color=theme.STRATEGY_COLOURS["uniform"], label="one at a time")
+            for x, v in list(zip(xpos - width / 2, together)) + \
+                    list(zip(xpos + width / 2, oneat)):
+                ax.text(x, v + 0.004, lexicon.pct(v), ha="center", fontsize=10,
+                        color=theme.INK_SECONDARY)
+            ax.set_xticks(xpos, labels)
+            ax.set_ylabel("risk of the chosen design")
+            _pct_axis(ax)
+            ax.legend(fontsize=10.5)
+            self.b1_chart.set_caption(
+                "the same search budget both ways, measured with two independently "
+                "trained AIs (b1_integration_gap.md; artefact "
+                "models/runs/b1_integration_gap.json)", "ledger")
+            self.b1_chart.redraw()
 
     def _picked(self, event) -> None:
         if not hasattr(self, "_test_rows"):
@@ -663,22 +876,22 @@ class Obj4Exhibit(ExhibitBase):
         i = int(event.ind[0])
         r = self._test_rows[i]
         self.design_label.setText(
-            f"Design: OD <b>{r['od']}</b>, fleet N={r['N']} · true {r['true']:.3f}, "
-            f"predicted {r['pred']:.3f} · a placement is an (origin base, destination FOB) "
-            f"pair; the design objective is the equilibrium mission-failure of the resulting game.")
+            f"This site: convoys would run {r['od'].split('-')[0]} → "
+            f"{r['od'].split('-')[1]} with a fleet of {r['N']}. The game says "
+            f"{lexicon.pct(r['true'])} risk; the shortcut model guessed "
+            f"{lexicon.pct(r['pred'])}. Solving it live below…")
         self._design_seq += 1
         seq = self._design_seq
-        self.design_caption.setText(f"solving the design {r['od']} N={r['N']} live…")
         s, t = str(r["od"]).split("-")
         run_in_background(
             oracle_bridge.build_instance, "kaliningrad", s, t, 1, int(r["N"]), 8, (0.15, 0.95),
             on_done=lambda inst, my=seq: self._design_ready(inst, my),
-            on_fail=lambda tb, my=seq: (self.design_caption.setText("design solve failed")
+            on_fail=lambda tb, my=seq: (self.design_caption.setText("the live solve failed")
                                         if my == self._design_seq else None))
 
     def _design_ready(self, inst, seq: int) -> None:
         if seq != self._design_seq:
-            return  # another design was clicked meanwhile
+            return
         self.design_map.show()
         if not self._design_city_loaded:
             self.design_map.set_city(inst.city_map)
@@ -691,11 +904,11 @@ class Obj4Exhibit(ExhibitBase):
                 for ri, c in enumerate(occ):
                     marg[ri] += p * c / inst.N
         self.design_map.set_route_mixture(list(marg))
-        # the map may have been hidden until now; refit once the layout has run
         QTimer.singleShot(0, self.design_map.fit_routes)
         self.design_caption.setText(
-            f"computed live · the design {inst.s}-{inst.t} (N={inst.N}) as a game: equilibrium "
-            f"mixture drawn; loss_mixed {inst.mc_value:.3f}, loss_det {inst.mc_loss_det:.3f}")
+            f"computed live · this site as a game, with the proven-optimal mix drawn: "
+            f"best possible risk {lexicon.pct(inst.mc_value)}, best predictable plan "
+            f"{lexicon.pct(inst.mc_loss_det)}")
 
     def _run_race(self) -> None:
         if not getattr(self, "_f3", None):
@@ -706,15 +919,13 @@ class Obj4Exhibit(ExhibitBase):
         run_in_background(self._race_worker, rows,
                           on_done=self._race_done,
                           on_fail=lambda tb: (self.race_btn.setEnabled(True),
-                                              self.race_label.setText("race failed")))
+                                              self.race_label.setText("the race failed")))
 
     @staticmethod
     def _race_worker(rows: list, repeats: int = 12, n0: int = 8, budget: int = 60):
-        """A live LCB acquisition race over the banked F3 design table.
-
-        Surrogate = ridge regression on the design features (simplified: the
-        banked run used a neural surrogate); the 'oracle' values are the
-        table's banked true exploitabilities."""
+        """A live LCB acquisition race over the banked F3 design table
+        (simplified linear shortcut model; the project's recorded run used the
+        neural one)."""
         X = np.array([r["x"] for r in rows], dtype=float)
         y = np.array([r["y"] for r in rows], dtype=float)
         X = (X - X.mean(0)) / (X.std(0) + 1e-9)
@@ -751,31 +962,32 @@ class Obj4Exhibit(ExhibitBase):
     def _race_done(self, result) -> None:
         sbo, rnd, opt = result
         self.race_btn.setEnabled(True)
-        self.race_label.setText("done (12 repeats, seeds 0-11)")
-        n0 = 8  # both methods start after the same 8 seed evaluations
+        self.race_label.setText("done — twelve repeats, fixed seeds 0-11")
+        n0 = 8
         ax = self.race_chart.clear()
         ax.plot(range(n0, n0 + len(sbo)), sbo, color=theme.BLUE, linewidth=2.0,
-                label="surrogate-guided (live)")
+                label="smart search (live)")
         ax.plot(range(n0, n0 + len(rnd)), rnd, color=theme.STRATEGY_COLOURS["uniform"],
-                linewidth=2.0, label="random search (live)")
-        ax.axhline(opt, color=theme.STRATEGY_COLOURS["equilibrium"], linestyle=":", linewidth=1.0)
-        ax.annotate(f"table optimum {opt:.3f}", xy=(0.02, opt),
+                linewidth=2.0, label="blind search (live)")
+        ax.axhline(opt, color=theme.STRATEGY_COLOURS["equilibrium"], linestyle=":",
+                   linewidth=1.0)
+        ax.annotate(f"the best site · {lexicon.pct(opt)}", xy=(0.02, opt),
                     xycoords=("axes fraction", "data"), fontsize=10, va="bottom",
                     color=theme.STRATEGY_COLOURS["equilibrium"])
-        ax.set_xlabel("evaluations")
-        ax.set_ylabel("best design found (median of 12 repeats)")
+        ax.set_xlabel("designs tried")
+        ax.set_ylabel("best risk found so far")
+        _pct_axis(ax)
         ax.legend(fontsize=10.5)
         self.race_chart.set_caption(
-            "ridge surrogate re-fitted live over the banked F3 design table "
-            "(simplified surrogate; the banked D1 loop below used the neural one)", "live")
+            "both searches start from the same eight random tries · simplified shortcut "
+            "model, re-fitted live over the recorded design table", "live")
         self.race_chart.redraw()
 
 
 # ===================================================================== Obj 5
 
 class Obj5Exhibit(ExhibitBase):
-    """The ladder raced live + the gen12 disruption sweep curves + the A8
-    prevalence explorer (click an OD to open it in the Playground)."""
+    """The race, the harder fights, and the not-cherry-picked proof."""
 
     open_od_requested = Signal(str, str)  # (city, od)
 
@@ -786,22 +998,24 @@ class Obj5Exhibit(ExhibitBase):
         self._engines = {}
         self._racing = False
 
-        c = self.card("The ladder, raced on the headline instance (35-159, N=3, K=1)")
+        c = self.card("The race: four ways to run convoys, each against an enemy "
+                      "who knows its habits")
         row = QWidget()
         rl = QHBoxLayout(row)
         rl.setContentsMargins(0, 0, 0, 0)
-        self.race_btn = QPushButton("▶ Race the strategies (Space)")
+        self.race_btn = QPushButton("▶ Race them (Space)")
         self.race_btn.setProperty("accent", True)
         self.race_btn.clicked.connect(self.toggle_play)
         rl.addWidget(self.race_btn)
-        self.race_label = QLabel("Preparing strategies (LP + ALNS + SACRED checkpoints)…")
+        self.race_label = QLabel("Getting the contenders ready…")
         rl.addWidget(self.race_label, 1)
         c.layout_().addWidget(row)
-        self.race_chart = ChartWidget(title="obj5-ladder-race", height=3.4, width=7.4)
+        self.race_chart = ChartWidget(title="obj5-the-race", height=3.4, width=7.4)
         c.layout_().addWidget(self.race_chart)
 
-        c2 = self.card("Varied disruption: the gen12 K and N sweep")
-        self.sweep_chart = ChartWidget(title="obj5-gen12-sweeps", height=3.0, width=7.4)
+        c2 = self.card("Does it still win when the enemy grows stronger "
+                       "and the fleet grows bigger?")
+        self.sweep_chart = ChartWidget(title="obj5-harder-fights", height=3.0, width=7.4)
         c2.layout_().addWidget(self.sweep_chart)
         self._draw_sweeps()
 
@@ -818,15 +1032,21 @@ class Obj5Exhibit(ExhibitBase):
     # ------------------------------------------------------- prevalence (A8)
 
     def _build_prevalence(self) -> None:
-        c = self.card("Were the headlines cherry-picked? The A8 prevalence screen (160 ODs)")
-        self.prev_chart = ChartWidget(title="obj5-a8-prevalence", height=3.4, width=7.4)
+        c = self.card("Were these maps cherry-picked?")
+        lead = QLabel(
+            "No — the opposite. Across 160 crossings in four cities, predictable habits "
+            "are expensive on most of them; the proving grounds were deliberately chosen "
+            "among the hardest. Click any dot to open that crossing in the Playground.")
+        lead.setWordWrap(True)
+        c.layout_().addWidget(lead)
+        self.prev_chart = ChartWidget(title="obj5-every-crossing", height=3.4, width=7.4)
         c.layout_().addWidget(self.prev_chart)
-        self.prev_label = QLabel("Loading the prevalence artefact…")
+        self.prev_label = QLabel("Loading the survey…")
         self.prev_label.setWordWrap(True)
         c.layout_().addWidget(self.prev_label)
         run_in_background(self._prevalence_worker, on_done=self._prevalence_ready,
                           on_fail=lambda tb: self.prev_label.setText(
-                              "artefact unavailable: models/runs/a8_prevalence.json"))
+                              "survey artefact unavailable: models/runs/a8_prevalence.json"))
 
     @staticmethod
     def _prevalence_worker():
@@ -839,56 +1059,55 @@ class Obj5Exhibit(ExhibitBase):
         rows = data.get("rows", [])
         heads = data.get("headlines", {})
         if not rows:
-            self.prev_label.setText("artefact empty")
+            self.prev_label.setText("survey artefact empty")
             return
         self._prev_rows = rows
         ax = self.prev_chart.clear()
         city_colours = {"kaliningrad": theme.BLUE, "gdansk": theme.AQUA,
                         "east_london": theme.VIOLET, "istanbul": theme.MAGENTA}
+        city_names = {"kaliningrad": "Kaliningrad", "gdansk": "Gdansk",
+                      "east_london": "East London", "istanbul": "Istanbul"}
         for city, colour in city_colours.items():
             xs = [r["det_eq"] for r in rows if r["city"] == city]
             ys = [r["unif_eq"] for r in rows if r["city"] == city]
-            ax.scatter(xs, ys, s=22, c=colour, alpha=0.65, label=city, picker=5)
+            ax.scatter(xs, ys, s=22, c=colour, alpha=0.65,
+                       label=city_names[city], picker=5)
         for od, h in heads.items():
             ax.plot([h["det_eq"]], [h["unif_eq"]], "*", markersize=16,
                     color=theme.STRATEGY_COLOURS["shortest_path"],
                     markeredgecolor="white", zorder=5)
-            ax.annotate(f"headline {od}", xy=(h["det_eq"], h["unif_eq"]),
+            ax.annotate("a proving ground", xy=(h["det_eq"], h["unif_eq"]),
                         xytext=(6, 6), textcoords="offset points", fontsize=10,
                         color=theme.INK)
         ax.axvline(2.0, color=theme.BASELINE, linestyle=":", linewidth=1.0)
-        ax.annotate("det/eq = 2 (material headroom)", xy=(2.0, 0.02),
-                    xycoords=("data", "axes fraction"), fontsize=9,
+        ax.annotate("habits cost double, to the right", xy=(2.0, 0.03),
+                    xycoords=("data", "axes fraction"), fontsize=9.5,
                     color=theme.INK_MUTED, rotation=90, va="bottom", ha="right")
-        ax.set_xlabel("deterministic optimum / equilibrium (calibration headroom)")
-        ax.set_ylabel("uniform-stack / equilibrium")
+        ax.set_xlabel("how much habits cost here (higher = worse for predictable plans)")
+        ax.set_ylabel("how much naive randomness costs")
         ax.legend(fontsize=9)
         self.prev_chart.set_caption(
-            "160 screened ODs, 40 per city, N=3 K=1 mission · artefact "
-            "models/runs/a8_prevalence.json (a6_a7_a8_completions.md; figure "
-            "assets/prevalence.png) · click a dot to open that OD in the Playground",
-            "ledger")
+            "160 crossings, 40 per city · click a dot to open that crossing in the "
+            "Playground · artefact models/runs/a8_prevalence.json "
+            "(a6_a7_a8_completions.md; figure assets/prevalence.png)", "ledger")
         self.prev_chart.canvas.mpl_connect("pick_event", self._prevalence_picked)
         self.prev_chart.redraw()
         self.prev_label.setText(
-            "Every dot is an OD pair from the standing screen; the stars are the two "
-            "headline instances, top-decile BY the pre-registered screen design.")
+            "The stars are the two proving grounds: hard on purpose, picked by rules "
+            "written down before any training.")
 
     def _prevalence_picked(self, event) -> None:
-        try:
-            colour = event.artist.get_facecolor()[0]
-        except Exception:
-            colour = None
-        # identify the row by matching offsets back to the data
         offsets = event.artist.get_offsets()
         i = int(event.ind[0])
         x, y = float(offsets[i][0]), float(offsets[i][1])
         best = min(self._prev_rows,
                    key=lambda r: (r["det_eq"] - x) ** 2 + (r["unif_eq"] - y) ** 2)
         self.prev_label.setText(
-            f"Selected {best['city']} {best['od']} · det/eq {best['det_eq']:.2f}, "
-            f"uniform-stack/eq {best['unif_eq']:.2f} · opening in the Playground…")
+            f"Selected a {best['city'].replace('_', ' ').title()} crossing where habits "
+            f"cost {best['det_eq']:.1f}× the optimum · opening it in the Playground…")
         self.open_od_requested.emit(best["city"], best["od"])
+
+    # ------------------------------------------------------- the live race
 
     @staticmethod
     def _prepare_worker():
@@ -905,7 +1124,7 @@ class Obj5Exhibit(ExhibitBase):
             pol = policies.load_policy(g14[0], inst)
             occ = inst.route_dist_to_stacked_occ_dist(pol.route_distribution())
             from ..game.sortie import DefenderSpec
-            sacred_spec = DefenderSpec("sacred", "SACRED (gen14 banked ensemble)", occ)
+            sacred_spec = DefenderSpec("sacred", "SACRED", occ)
         contenders = [("shortest_path", specs["shortest"]), ("alns", alns)]
         if sacred_spec is not None:
             contenders.append(("sacred", sacred_spec))
@@ -918,16 +1137,16 @@ class Obj5Exhibit(ExhibitBase):
         from ..game.sortie import SortieEngine
         self._per_engine = {k: SortieEngine(self._inst, seed=7 + i)
                             for i, (k, _) in enumerate(self._contenders)}
-        self.race_label.setText("Ready. Each strategy flies its own sorties against its own "
-                                "best-response interdictor; ledger rows shown for the arms "
-                                "that cannot be re-flown live.")
+        self.race_label.setText(
+            "Ready. Each plan flies its own missions against an enemy tuned to its own "
+            "habits — press play.")
         self._draw_race()
 
     def toggle_play(self) -> None:
         if not hasattr(self, "_contenders"):
             return
         self._racing = not self._racing
-        self.race_btn.setText("⏸ Pause (Space)" if self._racing else "▶ Race the strategies (Space)")
+        self.race_btn.setText("⏸ Pause (Space)" if self._racing else "▶ Race them (Space)")
         if self._racing:
             self._timer.start()
         else:
@@ -936,7 +1155,7 @@ class Obj5Exhibit(ExhibitBase):
     def _race_tick(self) -> None:
         for key, spec in self._contenders:
             eng = self._per_engine[key]
-            att = eng.attacker_specs(spec)[0]  # oracle BR
+            att = eng.attacker_specs(spec)[0]  # the worst-case enemy
             for _ in range(4):
                 eng.play_sortie(spec, att)
             st = self._stats[key]
@@ -952,44 +1171,45 @@ class Obj5Exhibit(ExhibitBase):
             colour = theme.STRATEGY_COLOURS.get(key, theme.BLUE)
             hist = self._stats[key]["hist"]
             if hist:
-                ax.plot(range(1, len(hist) + 1), hist, color=colour, linewidth=1.8, label=None)
+                ax.plot(range(1, len(hist) + 1), hist, color=colour, linewidth=1.8)
             exact = self._per_engine[key].exploitability(spec)
             ax.axhline(exact, color=colour, linestyle=":", linewidth=1.0, alpha=0.85)
-            ax.annotate(f"{key} {exact:.3f}", xy=(1.0, exact),
-                        xycoords=("axes fraction", "data"), fontsize=10, ha="right",
-                        va="bottom", color=colour)
-        # ledger rows that cannot be re-flown live
+            ax.annotate(f"{lexicon.strategy_name(key)} · {lexicon.pct(exact)}",
+                        xy=(1.0, exact), xycoords=("axes fraction", "data"),
+                        fontsize=10, ha="right", va="bottom", color=colour)
         rows = _exhibit_data()["headline_ladders"]["multiconvoy"]["rows"]
         van = next((r for r in rows if r["arm"] == "vanilla"), None)
         if van:
-            ax.axhline(van["value"], color=theme.STRATEGY_COLOURS["vanilla"], linestyle="--",
-                       linewidth=1.2, alpha=0.9)
-            ax.annotate(f"vanilla {van['value']} (ledger row, gen14: no checkpoint on disk)",
-                        xy=(0.0, van["value"]), xycoords=("axes fraction", "data"), fontsize=10,
-                        va="bottom", color=theme.STRATEGY_COLOURS["vanilla"])
-        banked = next((r for r in rows if r["arm"] == "sacred"), None)
-        if banked:
+            ax.axhline(van["value"], color=theme.STRATEGY_COLOURS["vanilla"],
+                       linestyle="--", linewidth=1.2, alpha=0.9)
             ax.annotate(
-                f"banked SACRED best-ckpt TAP {banked['value']} [0.246, 0.266] (gen14_evidence.md)",
-                xy=(0.0, banked["value"]), xycoords=("axes fraction", "data"), fontsize=10,
-                va="top", color=theme.STRATEGY_COLOURS["sacred"])
-        ax.set_xlabel("sortie")
-        ax.set_ylabel("running mission-failure rate")
+                f"{lexicon.strategy_name('vanilla')} · {lexicon.pct(van['value'])} "
+                "(from the record; cannot be re-flown)",
+                xy=(0.0, van["value"]), xycoords=("axes fraction", "data"), fontsize=10,
+                va="bottom", color=theme.STRATEGY_COLOURS["vanilla"])
+        ax.set_xlabel("missions flown")
+        ax.set_ylabel("share of missions failed so far")
+        _pct_axis(ax)
         ax.set_ylim(-0.03, 1.03)
-        seeds = ", ".join(f"{k} seed {self._per_engine[k].seed}" for k, _ in self._contenders)
         self.race_chart.set_caption(
-            "solid = live running estimates; dotted = exact values computed live; dashed = "
-            f"the ledger's vanilla row (gen14_evidence.md) · seeds: {seeds}", "live")
+            "computed live · solid lines = missions being flown right now; dotted = each "
+            "plan's exact worst case; SACRED's recorded result was 25.6% "
+            "(gen14_evidence.md) · fixed seeds per plan", "live")
         self.race_chart.redraw()
 
     def _draw_sweeps(self) -> None:
         data = _exhibit_data()["gen12_sweeps"]
         cells_order = ["N=2 K=1", "N=3 K=1", "N=3 K=2", "N=3 K=3", "N=5 K=1"]
+        cell_labels = ["2 convoys\n1 ambush team", "3 convoys\n1 team",
+                       "3 convoys\n2 teams", "3 convoys\n3 teams",
+                       "5 convoys\n1 team"]
+        ground = {"62-97": "old proving ground", "35-159": "proving ground"}
         ax = self.sweep_chart.clear()
         for od, marker in (("62-97", "o"), ("35-159", "s")):
             xs, sac, alns, eq = [], [], [], []
             for cname in cells_order:
-                cell = next((c for c in data["cells"] if c["od"] == od and c["cell"] == cname), None)
+                cell = next((c for c in data["cells"]
+                             if c["od"] == od and c["cell"] == cname), None)
                 if cell:
                     xs.append(cname)
                     sac.append(cell["sacred"])
@@ -997,27 +1217,26 @@ class Obj5Exhibit(ExhibitBase):
                     eq.append(cell["eq"])
             x = range(len(xs))
             ax.plot(x, sac, marker=marker, color=theme.STRATEGY_COLOURS["sacred"],
-                    linewidth=1.8, label=f"SACRED {od}")
+                    linewidth=1.8, label=f"SACRED · {ground[od]}")
             ax.plot(x, alns, marker=marker, color=theme.STRATEGY_COLOURS["alns"],
-                    linewidth=1.6, label=f"ALNS {od}")
+                    linewidth=1.6, label=f"{lexicon.strategy_name('alns')} · {ground[od]}")
             ax.plot(x, eq, marker=marker, color=theme.STRATEGY_COLOURS["equilibrium"],
-                    linewidth=1.4, label=f"equilibrium {od}")
-        ax.set_xticks(range(len(cells_order)), cells_order)
-        ax.set_ylabel("best-checkpoint exploitability")
-        ax.legend(fontsize=10, ncols=2)
+                    linewidth=1.4, label=f"{lexicon.GOALPOST_LEFT} · {ground[od]}")
+        ax.set_xticks(range(len(cell_labels)), cell_labels, fontsize=9.5)
+        ax.set_ylabel("chance the mission fails (worst case)")
+        _pct_axis(ax)
+        ax.legend(fontsize=9.5, ncols=2)
         self.sweep_chart.set_caption(
-            "SACRED < ALNS in all 10 cells; every value from the gen12 ledger table "
-            "(gen12_sweeps.md; circles 62-97, squares 35-159; single-seed curve points "
-            "except 62-97 N=3 K=1)", "ledger")
+            "SACRED stays below the professional planner in all ten fights "
+            "(gen12_sweeps.md; circles = the old proving ground, squares = the "
+            "proving ground)", "ledger")
         self.sweep_chart.redraw()
 
 
 # ===================================================================== ZST
 
 class ZstExhibit(ExhibitBase):
-    """Zero-shot transfer: the frozen generalist routes a city it never saw,
-    bounded by the Block A amortiser ladder, restated in gap-closure terms,
-    and stress-tested against intel error."""
+    """Drop it somewhere it has never been — in three beats."""
 
     open_compare_requested = Signal()
 
@@ -1030,15 +1249,20 @@ class ZstExhibit(ExhibitBase):
         self._intel_points = {}
         self._rnd_ratio = None
 
-        c = self.card("Route a never-seen city, zero-shot")
+        # ---- beat 1: the drop
+        c = self.card("Trained in three cities. Dropped into Gdansk.")
         row = QWidget()
         rl = QHBoxLayout(row)
         rl.setContentsMargins(0, 0, 0, 0)
         self.od_combo = QComboBox()
-        for od in ("249-95", "106-173", "351-210", "146-296", "275-72", "193-278"):
-            self.od_combo.addItem(f"Gdansk {od} (gen16 held-out)", ("gdansk", od))
+        for i, od in enumerate(("249-95", "106-173", "351-210",
+                                "146-296", "275-72", "193-278")):
+            self.od_combo.addItem(f"Gdansk crossing {i + 1}", ("gdansk", od))
+            self.od_combo.setItemData(self.od_combo.count() - 1,
+                                      f"crossing {od} · never seen in training",
+                                      Qt.ToolTipRole)
         rl.addWidget(self.od_combo)
-        self.eval_btn = QPushButton("Evaluate zero-shot")
+        self.eval_btn = QPushButton("Drop them into Gdansk")
         self.eval_btn.setProperty("accent", True)
         self.eval_btn.clicked.connect(self._evaluate)
         rl.addWidget(self.eval_btn)
@@ -1050,50 +1274,52 @@ class ZstExhibit(ExhibitBase):
         left_box = QWidget()
         ll = QVBoxLayout(left_box)
         ll.setContentsMargins(0, 0, 0, 0)
-        lt = QLabel("gen16 multi-city generalist (frozen, never trained here)")
+        lt = QLabel("SACRED — first time in this city")
         lt.setProperty("h3", True)
         ll.addWidget(lt)
         self.map_gen = MapView()
-        self.map_gen.setMinimumHeight(340)
+        self.map_gen.setMinimumHeight(320)
         ll.addWidget(self.map_gen)
+        self.hero_gen = HeroNumber("above the proven optimum · lower is better")
+        ll.addWidget(self.hero_gen)
         maps_row.addWidget(left_box)
         right_box = QWidget()
         rr = QVBoxLayout(right_box)
         rr.setContentsMargins(0, 0, 0, 0)
-        rt = QLabel("random-init network (same architecture, untrained)")
+        rt = QLabel("An untrained AI")
         rt.setProperty("h3", True)
         rr.addWidget(rt)
         self.map_rnd = MapView()
-        self.map_rnd.setMinimumHeight(340)
+        self.map_rnd.setMinimumHeight(320)
         rr.addWidget(self.map_rnd)
+        self.hero_rnd = HeroNumber("above the proven optimum")
+        rr.addWidget(self.hero_rnd)
         maps_row.addWidget(right_box)
         c.layout_().addWidget(maps_row)
         self.result_label = QLabel(
-            "Press “Evaluate zero-shot”: both networks route the chosen Gdansk instance; "
-            "the maps and ratios appear here.")
+            "Pick a crossing and press the button: both AIs plan their route mixes for "
+            "a city neither has ever seen, and both are scored right here, right now.")
         self.result_label.setWordWrap(True)
         c.layout_().addWidget(self.result_label)
+        self.result_fine = QLabel("")
+        self.result_fine.setProperty("fineprint", True)
+        self.result_fine.setWordWrap(True)
+        c.layout_().addWidget(self.result_fine)
 
-        c2 = self.card("The transfer-difficulty ladder")
-        self.ladder_chart = ChartWidget(title="zst-transfer-ladder", height=3.0, width=7.2)
-        c2.layout_().addWidget(self.ladder_chart)
-        self._draw_ladder()
-
-        c3 = self.card("Who transfers? The full amortiser ladder (Block A)")
-        self.amort_chart = ChartWidget(title="zst-amortiser-ladder", height=3.2, width=7.2)
+        # ---- beat 2: who else can do this?
+        c3 = self.card("Who else can do this?")
+        lead = QLabel(
+            "The methods that match SACRED here all need the maths answer key for every "
+            "training map. SACRED needs nothing — and past a certain problem size, "
+            "answer keys stop existing.")
+        lead.setWordWrap(True)
+        c3.layout_().addWidget(lead)
+        self.amort_chart = ChartWidget(title="zst-who-else", height=3.2, width=7.2)
         c3.layout_().addWidget(self.amort_chart)
-        note = QLabel(
-            "The honest re-scope: methods that consume train-side equilibrium LABELS "
-            "(distillation, retrieval) match or beat the adversarial generalist here; among "
-            "LABEL-FREE trainers only best-response self-play beats doing nothing. Past the "
-            "enumeration wall (K ≥ 4) labels cannot exist, and self-play is the only trainer "
-            "on the board.")
-        note.setWordWrap(True)
-        c3.layout_().addWidget(note)
         cmp_row = QWidget()
         crl = QHBoxLayout(cmp_row)
         crl.setContentsMargins(0, 0, 0, 0)
-        self.compare_btn = QPushButton("Fly these contenders side by side (Compare mode)")
+        self.compare_btn = QPushButton("See them fly, side by side")
         self.compare_btn.setProperty("accent", True)
         self.compare_btn.clicked.connect(self.open_compare_requested.emit)
         crl.addWidget(self.compare_btn)
@@ -1101,149 +1327,117 @@ class ZstExhibit(ExhibitBase):
         c3.layout_().addWidget(cmp_row)
         self._draw_amortiser()
 
-        c4 = self.card("The same ladder in calibration content: A7 gap closure")
-        self.gap_chart = ChartWidget(title="zst-gap-closure", height=2.8, width=7.2)
+        # the old transfer-difficulty ladder stays, one click away
+        ladder_rd = _Disclosure("The transfer ladder, in the record's own units")
+        self.ladder_chart = ChartWidget(title="zst-transfer-ladder", height=3.0, width=7.0)
+        ladder_rd.body_lay.addWidget(self.ladder_chart)
+        c3.layout_().addWidget(ladder_rd)
+        self._draw_ladder()
+
+        # ---- beat 3: how far does it stretch?
+        c4 = self.card("How far does it stretch?")
+        stretch_lead = QLabel(
+            "Think of it as a battery: how much of the possible protection is left as "
+            "the AI gets further from home. Near home, most of it. In a giant city it "
+            "has never seen, almost none — it still beats an untrained AI there, but "
+            "that far out the protection is randomness, not cleverness.")
+        stretch_lead.setWordWrap(True)
+        c4.layout_().addWidget(stretch_lead)
+        self.gap_chart = ChartWidget(title="zst-how-far", height=2.9, width=7.2)
         c4.layout_().addWidget(self.gap_chart)
+        gap_rd = RecordDisclosure()
+        gap_rd.add_quote(_exhibit_data()["gap_closure_ladder"]["shared_quote"],
+                         "experiments/a6_a7_a8_completions.md")
+        c4.layout_().addWidget(gap_rd)
         self._draw_gap_closure()
 
-        c5 = self.card("Corrupt the observed threat map (the A3 intel-error design, live)")
+        # ---- the intel-error demo
+        c5 = self.card("Feed it a completely wrong danger map — it barely cares")
         intel_row = QWidget()
         irl = QHBoxLayout(intel_row)
         irl.setContentsMargins(0, 0, 0, 0)
-        irl.addWidget(QLabel("Shuffle fraction of the OBSERVED candidate vulnerabilities:"))
+        irl.addWidget(QLabel("How wrong is the map it sees?"))
         self.intel_slider = QSlider(Qt.Horizontal)
         self.intel_slider.setRange(0, 100)
         self.intel_slider.setValue(0)
         self.intel_slider.setEnabled(False)
         self.intel_slider.sliderReleased.connect(self._intel_run)
         irl.addWidget(self.intel_slider, 1)
-        self.intel_btn = QPushButton("Corrupt and re-evaluate")
+        self.intel_btn = QPushButton("Corrupt the map and re-test")
         self.intel_btn.setEnabled(False)
         self.intel_btn.clicked.connect(self._intel_run)
         irl.addWidget(self.intel_btn)
         c5.layout_().addWidget(intel_row)
         self.intel_label = QLabel(
-            "Evaluate an OD above first; then corrupt what the policy SEES while reality "
-            "stays fixed. Reality (the true game) scores every row.")
+            "Drop the AIs into Gdansk above first. Then scramble the danger map the AI "
+            "is shown — the real dangers stay where they are, and the real game does "
+            "the scoring.")
         self.intel_label.setWordWrap(True)
         c5.layout_().addWidget(self.intel_label)
-        self.intel_chart = ChartWidget(title="zst-intel-error", height=2.6, width=7.2)
+        self.intel_chart = ChartWidget(title="zst-wrong-map", height=2.6, width=7.2)
         c5.layout_().addWidget(self.intel_chart)
         intel_note = QLabel(
-            "The honest reading (zst_map_robustness.md): the hedge barely moves under a fully "
-            "wrong observed map, which is robustness to intel error AND evidence that per-edge "
-            "map-reading is not the mechanism; the hedge is geometry-informed.")
+            "This is two findings at once: the protection survives bad intelligence, "
+            "and the AI is not reading the map road by road — its protection comes "
+            "from road geometry it learned across cities.")
         intel_note.setWordWrap(True)
         c5.layout_().addWidget(intel_note)
 
         self.add_quote_cards("zst")
 
-    # ---------------------------------------------------- amortiser + gap charts
+    # ---------------------------------------------------- beat 2 + 3 charts
 
     def _draw_amortiser(self) -> None:
         ladder = _exhibit_data()["amortiser_ladder"]
-        rows = ladder["rows"]
+        rows = [r for r in ladder["rows"] if r["arm"] != "equilibrium"]
         ax = self.amort_chart.clear()
-        vals = [r["value"] for r in rows]
+        vals = [r["value"] - 1.0 for r in rows]     # distance above the optimum
         cols = [theme.STRATEGY_COLOURS.get(r["arm"], theme.BLUE) for r in rows]
+        labels = [lexicon.strategy_name(r["arm"])
+                  + ("  ·  needs the answer key" if r.get("labelled") else "")
+                  for r in rows]
         ax.barh(range(len(rows)), vals, color=cols, height=0.62)
-        labels = [r["label"] + ("  🏷" if r.get("labelled") else "") for r in rows]
         ax.set_yticks(range(len(rows)), labels, fontsize=10)
         ax.invert_yaxis()
         for i, v in enumerate(vals):
-            ax.text(v + 0.02, i, f"{v:.3f}" if v != 1.99 else "~1.99", va="center",
-                    fontsize=10, color=theme.INK_SECONDARY)
-        ax.axvline(1.0, color=theme.STRATEGY_COLOURS["equilibrium"], linestyle=":",
-                   linewidth=1.0)
-        ax.set_xlim(0.85, max(vals) * 1.12)
-        ax.set_xlabel(ladder["unit"])
+            ax.text(v + 0.015, i, f"+{lexicon.pct(v)}", va="center", fontsize=10,
+                    color=theme.INK_SECONDARY)
+        ax.set_xlim(0, max(vals) * 1.18)
+        ax.set_xlabel("how far above the proven optimum each one plays, in Gdansk")
+        _pct_axis(ax, "x")
         self.amort_chart.set_caption(
-            "held-out Gdansk, select-on-train · 🏷 = consumes train-side equilibrium labels · "
-            "ledger: gen25_dr_control.md (the complete-ladder sentence; equilibrium row from "
-            "a6_a7_a8_completions.md)", "ledger")
+            "every contender scored on the same six never-seen crossings · from the "
+            "record: gen25_dr_control.md (equilibrium row: a6_a7_a8_completions.md)",
+            "ledger")
         self.amort_chart.redraw()
 
     def _draw_gap_closure(self) -> None:
         g = _exhibit_data()["gap_closure_ladder"]
         rungs = g["rungs"]
+        plain = ["At home — three convoys", "At home — one convoy",
+                 "A new crossing, same city", "Gdansk — a new city",
+                 "Istanbul — the hardest new city", "Kyiv — new, and huge"]
         ax = self.gap_chart.clear()
-        vals = [r["value"] for r in rungs]
-        ax.barh(range(len(rungs)), vals, color=theme.BLUE, height=0.6)
-        ax.set_yticks(range(len(rungs)), [r["label"] for r in rungs], fontsize=10)
+        y = np.arange(len(rungs))
+        ax.barh(y, [1.0] * len(rungs), color=theme.GRID, height=0.6, zorder=1)
+        vals = [max(0.0, r["value"]) for r in rungs]
+        ax.barh(y, vals, color=theme.BLUE, height=0.6, zorder=2)
+        labels = [plain[i] if i < len(plain) else r["label"]
+                  for i, r in enumerate(rungs)]
+        ax.set_yticks(y, labels, fontsize=10)
         ax.invert_yaxis()
-        for i, v in enumerate(vals):
-            ax.text(max(v, 0) + 0.015, i, f"{v:.2f}", va="center", fontsize=10,
-                    color=theme.INK_SECONDARY)
-        ax.axvline(0.0, color=theme.BASELINE, linewidth=1.0)
-        ax.set_xlim(-0.05, 1.02)
-        ax.set_xlabel(g["unit"])
+        for i, r in enumerate(rungs):
+            ax.text(1.015, i, lexicon.pct(max(0.0, r["value"])), va="center",
+                    fontsize=10, color=theme.INK_SECONDARY)
+        ax.set_xlim(0, 1.12)
+        ax.set_xticks([])
+        ax.grid(False)
+        ax.set_xlabel("share of the possible protection it delivers")
         self.gap_chart.set_caption(
-            "the ratio ladder restated as gap closure (a6_a7_a8_completions.md; figure "
-            "assets/transfer_gap_closure.png): the far end is randomisation-level protection, "
-            "not calibrated hedging", "ledger")
+            "100% = plays like the proven optimum; 0% = no better than the best "
+            "predictable plan (a6_a7_a8_completions.md; figure "
+            "assets/transfer_gap_closure.png)", "ledger")
         self.gap_chart.redraw()
-
-    # ---------------------------------------------------- intel error (live)
-
-    def _intel_run(self) -> None:
-        if self._pol is None or self._inst_zst is None:
-            self.intel_label.setText("Evaluate an OD above first.")
-            return
-        frac = self.intel_slider.value() / 100.0
-        self.intel_btn.setEnabled(False)
-        pol, inst = self._pol, self._inst_zst
-        run_in_background(self._intel_worker, pol, inst, frac,
-                          on_done=lambda res: self._intel_done(res, pol),
-                          on_fail=lambda tb: (self.intel_btn.setEnabled(True),
-                                              self.intel_label.setText(
-                                                  "failed: " + tb.strip().splitlines()[-1])))
-
-    @staticmethod
-    def _intel_worker(pol, inst, frac: float, seed: int = 0):
-        rng = np.random.default_rng(seed)
-        edges = list(inst.edge_vuln.keys())
-        vals = np.array([inst.edge_vuln[e] for e in edges])
-        k = int(round(frac * len(edges)))
-        override = {}
-        if k >= 2:
-            idx = rng.choice(len(edges), size=k, replace=False)
-            perm = rng.permutation(idx)
-            for i_from, i_to in zip(idx, perm):
-                override[edges[i_to]] = float(vals[i_from])
-        d = pol.route_distribution_observed(override) if override else pol.route_distribution()
-        occ = inst.route_dist_to_stacked_occ_dist(d)
-        _, e = inst.exploitability_occ(occ)   # scored under the TRUE game
-        return frac, e / inst.mc_value, seed
-
-    def _intel_done(self, res, pol) -> None:
-        self.intel_btn.setEnabled(True)
-        if pol is not self._pol:
-            return  # a new OD was evaluated meanwhile
-        frac, ratio, seed = res
-        self._intel_points[frac] = ratio
-        ax = self.intel_chart.clear()
-        xs = sorted(self._intel_points)
-        ys = [self._intel_points[x] for x in xs]
-        ax.plot([x * 100 for x in xs], ys, "o-", color=theme.BLUE, linewidth=1.8,
-                markersize=7, markeredgecolor="white")
-        if self._rnd_ratio is not None:
-            ax.axhline(self._rnd_ratio, color=theme.STRATEGY_COLOURS["random_init"],
-                       linestyle="--", linewidth=1.2)
-            ax.annotate(f"random-init {self._rnd_ratio:.2f}x", xy=(1.0, self._rnd_ratio),
-                        xycoords=("axes fraction", "data"), fontsize=9, ha="right",
-                        va="bottom", color=theme.STRATEGY_COLOURS["random_init"])
-        ax.axhline(1.0, color=theme.STRATEGY_COLOURS["equilibrium"], linestyle=":",
-                   linewidth=1.0)
-        ax.set_xlabel("% of observed candidate vulnerabilities shuffled (reality fixed)")
-        ax.set_ylabel("ratio to the TRUE equilibrium")
-        ax.set_ylim(0.9, max(2.3, (self._rnd_ratio or 2.0) + 0.2))
-        self.intel_chart.set_caption(
-            f"seed {seed} · gen16 policy on Gdansk {self._inst_zst.s}-{self._inst_zst.t} · "
-            "observation corrupted, reality fixed (the A3 design)", "live")
-        self.intel_chart.redraw()
-        self.intel_label.setText(
-            f"At {frac:.0%} shuffled the policy scores {ratio:.2f}x the true equilibrium "
-            "(true-map and corrupted rows share the banked checkpoint ensemble).")
 
     def _draw_ladder(self) -> None:
         rungs = _exhibit_data()["transfer_ladder"]["rungs"]
@@ -1255,7 +1449,8 @@ class ZstExhibit(ExhibitBase):
         ax.barh(range(len(rungs)), vals, color=cols, height=0.6)
         ax.set_yticks(range(len(rungs)), labels, fontsize=10)
         ax.invert_yaxis()
-        ax.axvline(1.0, color=theme.STRATEGY_COLOURS["equilibrium"], linestyle=":", linewidth=1.0)
+        ax.axvline(1.0, color=theme.STRATEGY_COLOURS["equilibrium"], linestyle=":",
+                   linewidth=1.0)
         for i, v in enumerate(vals):
             ax.text(v + 0.03, i, f"{v:.2f}x", va="center", fontsize=11,
                     color=theme.INK_SECONDARY)
@@ -1266,11 +1461,13 @@ class ZstExhibit(ExhibitBase):
             "gen16's A2-rescue row scores 1.90 vs random 2.43 on the A2 graph)", "ledger")
         self.ladder_chart.redraw()
 
+    # ---------------------------------------------------- the drop (beat 1)
+
     def _evaluate(self) -> None:
         city, od = self.od_combo.currentData()
         self.eval_btn.setEnabled(False)
         self.od_combo.setEnabled(False)
-        self.zst_label.setText("loading the frozen generalist…")
+        self.zst_label.setText("waking the AIs…")
         run_in_background(self._eval_worker, city, od,
                           on_done=self._eval_done,
                           on_fail=lambda tb: (self.eval_btn.setEnabled(True),
@@ -1304,23 +1501,96 @@ class ZstExhibit(ExhibitBase):
             mv.show_instance(inst.routes, inst.edge_vuln, inst.s, inst.t)
             mv.set_route_mixture(list(dist),
                                  theme.BLUE if mv is self.map_gen else theme.INK_MUTED)
+        r_gen = e_gen / inst.mc_value
+        r_rnd = e_rnd / inst.mc_value
+        self.hero_gen.set_text(f"+{lexicon.pct(r_gen - 1)}")
+        self.hero_rnd.set_text(f"+{lexicon.pct(r_rnd - 1)}")
         self.result_label.setText(
-            f"<b>Gdansk {inst.s}-{inst.t} · Generalist: {e_gen:.3f} = "
-            f"{e_gen / inst.mc_value:.2f}x equilibrium</b> vs random-init {e_rnd:.3f} = "
-            f"{e_rnd / inst.mc_value:.2f}x · this instance's equilibrium {inst.mc_value:.3f}, "
-            f"deterministic optimum {inst.mc_loss_det:.3f} (all computed live; policy = "
-            f"{ref.provenance}). The generalist was trained on Kaliningrad, East London and "
-            f"Istanbul; it has never seen this graph.")
-        # arm the intel-error demo on this OD/policy
+            f"On this crossing SACRED plays {lexicon.pct(r_gen - 1)} above the proven "
+            f"optimum; the untrained AI plays {lexicon.pct(r_rnd - 1)} above it. "
+            f"Closer to perfect play, in a city it has never seen — measured right now, "
+            f"on this machine.")
+        self.result_fine.setText(
+            f"computed live · mission-failure {e_gen:.3f} vs untrained {e_rnd:.3f} · "
+            f"this crossing's proven optimum {inst.mc_value:.3f}, best predictable plan "
+            f"{inst.mc_loss_det:.3f} · policy: {ref.provenance}")
+        # arm the wrong-map demo on this crossing/policy
         self._pol = pol
         self._inst_zst = inst
-        self._intel_points = {0.0: e_gen / inst.mc_value}
-        self._rnd_ratio = e_rnd / inst.mc_value
+        self._intel_points = {0.0: r_gen}
+        self._rnd_ratio = r_rnd
         self.intel_slider.setEnabled(True)
         self.intel_btn.setEnabled(True)
         self.intel_label.setText(
-            f"Armed on Gdansk {inst.s}-{inst.t}: true-map ratio "
-            f"{e_gen / inst.mc_value:.2f}x. Move the slider and corrupt what the policy sees.")
+            f"Armed on this crossing: with the true map it plays "
+            f"+{lexicon.pct(r_gen - 1)} above the optimum. Now scramble what it sees.")
+
+    # ---------------------------------------------------- the wrong map
+
+    def _intel_run(self) -> None:
+        if self._pol is None or self._inst_zst is None:
+            self.intel_label.setText("Drop the AIs into Gdansk above first.")
+            return
+        frac = self.intel_slider.value() / 100.0
+        self.intel_btn.setEnabled(False)
+        pol, inst = self._pol, self._inst_zst
+        run_in_background(self._intel_worker, pol, inst, frac,
+                          on_done=lambda res: self._intel_done(res, pol),
+                          on_fail=lambda tb: (self.intel_btn.setEnabled(True),
+                                              self.intel_label.setText(
+                                                  "failed: " + tb.strip().splitlines()[-1])))
+
+    @staticmethod
+    def _intel_worker(pol, inst, frac: float, seed: int = 0):
+        rng = np.random.default_rng(seed)
+        edges = list(inst.edge_vuln.keys())
+        vals = np.array([inst.edge_vuln[e] for e in edges])
+        k = int(round(frac * len(edges)))
+        override = {}
+        if k >= 2:
+            idx = rng.choice(len(edges), size=k, replace=False)
+            perm = rng.permutation(idx)
+            for i_from, i_to in zip(idx, perm):
+                override[edges[i_to]] = float(vals[i_from])
+        d = pol.route_distribution_observed(override) if override else pol.route_distribution()
+        occ = inst.route_dist_to_stacked_occ_dist(d)
+        _, e = inst.exploitability_occ(occ)   # scored under the TRUE game
+        return frac, e / inst.mc_value, seed
+
+    def _intel_done(self, res, pol) -> None:
+        self.intel_btn.setEnabled(True)
+        if pol is not self._pol:
+            return  # a new crossing was evaluated meanwhile
+        frac, ratio, seed = res
+        self._intel_points[frac] = ratio
+        ax = self.intel_chart.clear()
+        xs = sorted(self._intel_points)
+        ys = [self._intel_points[x] - 1.0 for x in xs]
+        ax.plot([x * 100 for x in xs], ys, "o-", color=theme.BLUE, linewidth=1.8,
+                markersize=7, markeredgecolor="white")
+        if self._rnd_ratio is not None:
+            ax.axhline(self._rnd_ratio - 1.0,
+                       color=theme.STRATEGY_COLOURS["random_init"],
+                       linestyle="--", linewidth=1.2)
+            ax.annotate(
+                f"{lexicon.strategy_name('random_init')} · "
+                f"+{lexicon.pct(self._rnd_ratio - 1)}",
+                xy=(1.0, self._rnd_ratio - 1.0), xycoords=("axes fraction", "data"),
+                fontsize=9, ha="right", va="bottom",
+                color=theme.STRATEGY_COLOURS["random_init"])
+        ax.axhline(0.0, color=theme.STRATEGY_COLOURS["equilibrium"], linestyle=":",
+                   linewidth=1.0)
+        ax.set_xlabel("share of the danger map scrambled (the real dangers stay put)")
+        ax.set_ylabel("above the proven optimum")
+        _pct_axis(ax)
+        ax.set_ylim(-0.06, max(1.3, (self._rnd_ratio or 2.0) - 1.0 + 0.2))
+        self.intel_chart.set_caption(
+            f"computed live · seed {seed} · SACRED on this Gdansk crossing, shown an "
+            "increasingly wrong map while the real dangers stay fixed", "live")
+        self.intel_chart.redraw()
+        self.intel_label.setText(
+            f"With {frac:.0%} of the map scrambled it plays +{lexicon.pct(ratio - 1)} "
+            "above the optimum — the same banked version of the AI in every test.")
 
 
 # ===================================================================== tab
@@ -1348,40 +1618,43 @@ class ObjectivesTab(QWidget, Exportable):
         split.setSizes([270, 1000])
 
         self._exhibits = [
-            ("Obj 1 · The zero-sum game", Obj1Exhibit(
+            ("1 · The game, won", Obj1Exhibit(
+                "Make the routing problem a game — and win it",
                 quotes["obj1"],
-                "Met more deeply than promised: formulated, characterised (when it fails), "
-                "solved against its own computable equilibrium, and closed with a LEARNED "
-                "antagonist agent (gen20: 0.81x oracle strength).")),
-            ("Obj 2 · The simulation environment", Obj2Exhibit(
+                "Delivered, and more: the game was formulated, solved against its own "
+                "provable optimum, and finally played against a learned enemy — which "
+                "SACRED still beat.")),
+            ("2 · A city becomes a game board", Obj2Exhibit(
+                "A real city becomes a game board in seconds",
                 quotes["obj2"],
-                "Met and strengthened: the multi-city extraction pipeline, the interdiction game "
-                "layer, and this application are all Obj-2 artefacts.")),
-            ("Obj 3 · SAC + ATLA + ERB", Obj3Exhibit(
+                "Delivered: any city's road map turns into a playable game, and this "
+                "application is itself part of the promise.")),
+            ("3 · The AI that teaches itself", Obj3Exhibit(
+                "The AI teaches itself — and knows when to stop",
                 quotes["obj3"],
-                "Met and closed verbatim: SAC entropy IS the mixed strategy; ATLA realised as "
-                "smooth fictitious play vs the oracle best response; and gen23 measured ERB "
-                "bootstrapping from the ALNS population (it hurts: deterministic demonstrations "
-                "fight the mixed-strategy optimum).")),
-            ("Obj 4 · Surrogate-based optimisation", Obj4Exhibit(
+                "Delivered: it trains against a thinking enemy, the project keeps the "
+                "best version of it, and we measured that expert examples actually "
+                "hurt it.")),
+            ("4 · Where should the base go?", Obj4Exhibit(
+                "Where should the base go? Let the game decide",
                 quotes["obj4"],
-                "Met in its honest form: F3 regression, D1 acquisition loop, D2 hardening tier, "
-                "D3 composite over the trained policy; on the never-trained city the composite "
-                "holds per-seed (A5), and B1 measures \"simultaneous\": the joint loop is the "
-                "safe default (0-19% better than tier-by-tier, actor-contingent).")),
-            ("Obj 5 · Evaluation vs baselines", Obj5Exhibit(
+                "Delivered in its honest form: a fast shortcut model scores every "
+                "design, a smart search finds the best in a few dozen tries, and "
+                "deciding everything together is the safe default.")),
+            ("5 · Beating the old world", Obj5Exhibit(
+                "Beat the best of the old world — then keep beating it as the "
+                "fight gets harder",
                 quotes["obj5"],
-                "Met strongly: both headline ladders on corrected code with n=10 CIs; disruption "
-                "curves in 10/10 cells; fairness rows pre-empting the natural attacks; the "
-                "transfer-level controls (gen21/gen25) making the adversarial claim causal; and "
-                "A8 answering cherry-picking (69% of ODs have material headroom).")),
-            ("ZST · The aim's promise", ZstExhibit(
+                "Delivered strongly: SACRED beats the professional planner in every "
+                "fight we measured, keeps winning as the enemy grows stronger, and the "
+                "maps were chosen hard on purpose.")),
+            ("6 · A city it has never seen", ZstExhibit(
+                "Drop it somewhere it has never been",
                 quotes["zst"],
-                "Realised, then honestly re-scoped by Block A: cheap label-consuming amortisers "
-                "match the transfer (retrieval 1.68, distillation 1.56), so the adversarial "
-                "generalist's distinction is label-freeness, self-stopping and threat "
-                "robustness, which is exactly the regime past the enumeration wall where "
-                "labels cannot exist. The hedge is geometry-informed, not map-reading.")),
+                "Delivered, then honestly re-scoped: simple methods that use the maths "
+                "answer key travel just as well — SACRED's distinction is that it needs "
+                "no answer key, stops its own training, and shrugs off bad "
+                "intelligence.")),
         ]
         for label, widget in self._exhibits:
             item = QListWidgetItem(label)

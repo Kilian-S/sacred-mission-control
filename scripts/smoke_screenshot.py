@@ -11,8 +11,13 @@ Usage: .venv/bin/python scripts/smoke_screenshot.py [outdir]
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
+
+# the coach overlays are a first-run feature for real users; suppress them in
+# automated screenshots so they do not obscure the captured state
+os.environ.setdefault("SMC_DISABLE_COACH", "1")
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -64,7 +69,7 @@ def main() -> int:
 
     def duel_select():
         win.tabs.setCurrentIndex(1)
-        pg.mode_combo.setCurrentIndex(1)
+        pg.open_mode("defend")
         d = pg.duel
         for i in range(d.def_combo.count()):
             if str(d.def_combo.itemData(i)).startswith("policy:gen19"):
@@ -81,7 +86,7 @@ def main() -> int:
     # M3: the ambush mode against the equilibrium mixture, with a placed ambush
     def ambush_mode():
         win.tabs.setCurrentIndex(1)
-        pg.mode_combo.setCurrentIndex(2)
+        pg.open_mode("attack")
         a = pg.ambush
         for i in range(a.def_combo.count()):
             if a.def_combo.itemData(i) == "equilibrium":
@@ -96,7 +101,7 @@ def main() -> int:
     # back to watch mode with a batch run for the convergence chart
     def watch_batch():
         win.tabs.setCurrentIndex(1)
-        pg.mode_combo.setCurrentIndex(0)
+        pg.open_mode("watch")
         if pg.watch._engine is not None:
             pg.watch._run_batch()
     shots.append(("watch-batch", watch_batch))
@@ -136,7 +141,7 @@ def main() -> int:
     # v1.1: the compare mode and the objective spectrum
     def compare_load():
         win.tabs.setCurrentIndex(1)
-        pg.mode_combo.setCurrentIndex(3)
+        pg.open_mode("compare")
     shots.append(("compare-load", compare_load))
 
     def compare_batch():
@@ -147,7 +152,7 @@ def main() -> int:
 
     def objective_linear():
         win.tabs.setCurrentIndex(1)
-        pg.mode_combo.setCurrentIndex(0)
+        pg.open_mode("watch")
         pg.objective_combo.setCurrentIndex(2)  # risk-neutral; debounce rebuilds
     shots.append(("objective-linear", objective_linear))
 
@@ -162,7 +167,7 @@ def main() -> int:
 
     def _zst_done():
         ex = obj._exhibits[5][1]
-        return ex.eval_btn.isEnabled() and ("Generalist" in ex.result_label.text()
+        return ex.eval_btn.isEnabled() and ("above the proven" in ex.result_label.text()
                                             or "failed" in ex.zst_label.text())
 
     def _compare_settled():

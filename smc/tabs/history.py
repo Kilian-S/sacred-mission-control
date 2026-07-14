@@ -112,7 +112,7 @@ class HistoryTab(QWidget, Exportable):
                 current_chapter = g.chapter
                 c = chap_by_id.get(g.chapter)
                 if c:
-                    self.sidebar.addItem(self._header_item(c.title.upper(), c.subtitle))
+                    self.sidebar.addItem(self._header_item(c.title, c.subtitle))
             item = QListWidgetItem(f"{g.title}\n{g.dates}")
             item.setData(_ROLE_GEN, g.id)
             item.setToolTip(g.question)
@@ -218,12 +218,20 @@ class HistoryTab(QWidget, Exportable):
         head.layout_().addWidget(row_w)
         self.card_lay.insertWidget(self.card_lay.count() - 1, head)
 
-        # ---- quotes card (the citable numbers, verbatim)
+        # ---- quotes card (plain words lead; the citable numbers verbatim below)
         if g.quotes:
             qc = Card()
-            qh = QLabel("The record, verbatim")
+            qh = QLabel("What happened")
             qh.setProperty("h3", True)
             qc.layout_().addWidget(qh)
+            if g.plain:
+                pw = QLabel(g.plain)
+                pw.setWordWrap(True)
+                pw.setStyleSheet(f"font-size: 15px; color: {theme.INK};")
+                qc.layout_().addWidget(pw)
+                rec = QLabel("The record, verbatim:")
+                rec.setProperty("fineprint", True)
+                qc.layout_().addWidget(rec)
             for quote in g.quotes:
                 lab = QLabel(quote.label)
                 lab.setStyleSheet(
@@ -270,7 +278,7 @@ class HistoryTab(QWidget, Exportable):
         # ---- chart (lazy, worker-loaded)
         if gen_charts.has_chart(g.id):
             cc = Card()
-            ch = QLabel("Training record")
+            ch = QLabel("The training, replayed")
             ch.setProperty("h3", True)
             cc.layout_().addWidget(ch)
             placeholder = StateLabel("Loading run artefacts…", "loading")
