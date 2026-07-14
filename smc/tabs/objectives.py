@@ -1227,7 +1227,7 @@ class Obj5Exhibit(ExhibitBase):
         _pct_axis(ax)
         ax.legend(fontsize=9.5, ncols=2)
         self.sweep_chart.set_caption(
-            "SACRED stays below the professional planner in all ten fights "
+            "SACRED stays below ALNS in all ten fights "
             "(gen12_sweeps.md; circles = the old proving ground, squares = the "
             "proving ground)", "ledger")
         self.sweep_chart.redraw()
@@ -1612,52 +1612,58 @@ class ObjectivesTab(QWidget, Exportable):
 
         self.sidebar = QListWidget()
         self.sidebar.setWordWrap(True)
+        self.sidebar.setTextElideMode(Qt.ElideNone)  # wrap long titles, never "…"
+        self.sidebar.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         split.addWidget(self.sidebar)
         self.stack = QStackedWidget()
         split.addWidget(self.stack)
-        split.setSizes([270, 1000])
+        split.setSizes([300, 1000])
 
         self._exhibits = [
-            ("1 · The game, won", Obj1Exhibit(
-                "Make the routing problem a game — and win it",
+            ("Objective 1 · Make routing a game, and win it", Obj1Exhibit(
+                "Objective 1: turn convoy routing into a game — and win it",
                 quotes["obj1"],
                 "Delivered, and more: the game was formulated, solved against its own "
                 "provable optimum, and finally played against a learned enemy — which "
                 "SACRED still beat.")),
-            ("2 · A city becomes a game board", Obj2Exhibit(
-                "A real city becomes a game board in seconds",
+            ("Objective 2 · Turn a real city into a game board", Obj2Exhibit(
+                "Objective 2: turn any real city into a game board in seconds",
                 quotes["obj2"],
                 "Delivered: any city's road map turns into a playable game, and this "
                 "application is itself part of the promise.")),
-            ("3 · The AI that teaches itself", Obj3Exhibit(
-                "The AI teaches itself — and knows when to stop",
+            ("Objective 3 · An AI that trains itself against an enemy", Obj3Exhibit(
+                "Objective 3: an AI that trains itself against an enemy — and knows "
+                "when to stop",
                 quotes["obj3"],
                 "Delivered: it trains against a thinking enemy, the project keeps the "
                 "best version of it, and we measured that expert examples actually "
                 "hurt it.")),
-            ("4 · Where should the base go?", Obj4Exhibit(
-                "Where should the base go? Let the game decide",
+            ("Objective 4 · Design the supply base with the game", Obj4Exhibit(
+                "Objective 4: let the game decide where the supply base goes",
                 quotes["obj4"],
                 "Delivered in its honest form: a fast shortcut model scores every "
                 "design, a smart search finds the best in a few dozen tries, and "
                 "deciding everything together is the safe default.")),
-            ("5 · Beating the old world", Obj5Exhibit(
-                "Beat the best of the old world — then keep beating it as the "
-                "fight gets harder",
+            ("Objective 5 · Beat the best classical planners", Obj5Exhibit(
+                "Objective 5: beat the best classical planners, and keep beating them "
+                "as the fight gets harder",
                 quotes["obj5"],
-                "Delivered strongly: SACRED beats the professional planner in every "
-                "fight we measured, keeps winning as the enemy grows stronger, and the "
-                "maps were chosen hard on purpose.")),
-            ("6 · A city it has never seen", ZstExhibit(
-                "Drop it somewhere it has never been",
+                "Delivered strongly: SACRED beats ALNS, the best classical planner, in "
+                "every fight we measured, keeps winning as the enemy grows stronger, and "
+                "the maps were chosen hard on purpose.")),
+            ("ZST · Route a city it has never seen", ZstExhibit(
+                "Zero-shot transfer: route a city it has never seen",
                 quotes["zst"],
                 "Delivered, then honestly re-scoped: simple methods that use the maths "
                 "answer key travel just as well — SACRED's distinction is that it needs "
                 "no answer key, stops its own training, and shrugs off bad "
                 "intelligence.")),
         ]
+        from PySide6.QtCore import QSize
         for label, widget in self._exhibits:
             item = QListWidgetItem(label)
+            # reserve two lines of height so long titles wrap instead of eliding
+            item.setSizeHint(QSize(0, 52))
             self.sidebar.addItem(item)
             self.stack.addWidget(widget)
             if isinstance(widget, Obj5Exhibit):

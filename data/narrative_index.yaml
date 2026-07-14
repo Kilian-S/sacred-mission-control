@@ -332,7 +332,7 @@ generations:
     dates: "2026-07-08/09"
     status: LOCKED
     plain: >-
-      Three convoys, one ambusher: the AI's randomised convoy plan lost far fewer missions than the best professional planner, close to the theoretical best possible.
+      Three convoys, one ambusher: the AI's randomised convoy plan lost far fewer missions than ALNS, the best classical route planner, close to the theoretical best possible.
     question: >-
       Does adversarially-trained randomised fleet routing beat a coordinating classical
       metaheuristic (ALNS) and non-adversarial SAC under the loss-averse mission-failure
@@ -437,7 +437,7 @@ generations:
     dates: "2026-07-10 (overnight)"
     status: CURVES_BANKED
     plain: >-
-      The AI stayed ahead of the professional planner in every one of ten harder-and-harder settings: more ambush teams, bigger fleets, and a brand-new crossing.
+      The AI stayed ahead of ALNS in every one of ten harder-and-harder settings: more ambush teams, bigger fleets, and a brand-new crossing.
     question: >-
       Does SACRED's best-checkpoint stay below ALNS across K and N on the headline OD and a
       held-out OD screened before training?

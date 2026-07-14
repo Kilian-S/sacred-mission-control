@@ -233,7 +233,7 @@ quote_cards:
       plain: >-
         We replaced the mathematical enemy with a learned one. It reached about
         four-fifths of the perfect ambusher's strength, and SACRED, trained against it,
-        still kept the mission-failure chance far below the professional planner's.
+        still kept the mission-failure chance far below that of ALNS, the classical planner.
       ledger: experiments/gen20_f2_learned.md
       items:
         - label: "The pass"
@@ -245,7 +245,7 @@ quote_cards:
   obj3:
     - title: "Do expert examples help it learn?"
       plain: >-
-        Showing the AI the professional planner's example plans made it WORSE: the
+        Showing the AI example plans from ALNS, the classical planner, made it WORSE: the
         examples teach predictable habits, and predictable habits are exactly what
         loses this game. A fresh start learned more, faster.
       ledger: experiments/gen23_c1_erb.md

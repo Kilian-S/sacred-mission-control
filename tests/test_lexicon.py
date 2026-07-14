@@ -33,8 +33,11 @@ def test_pct_formatting():
 
 
 def test_sentence_case_names():
-    """Names start with a capital and are not shouting (product names exempt)."""
+    """Names start with a capital and are not shouting. The only all-caps names
+    allowed are the two approved acronyms: SACRED (the product) and ALNS (the
+    industry-standard planner, assumed known per Kilian 2026-07-14)."""
+    approved_acronyms = ("SACRED", "ALNS")
     for name, _ in lexicon.STRATEGIES.values():
         assert name[0].isupper() or name in ("You",), name
-        if name not in ("SACRED",) and not name.startswith("SACRED"):
+        if not any(name == a or name.startswith(a) for a in approved_acronyms):
             assert not name.isupper(), name

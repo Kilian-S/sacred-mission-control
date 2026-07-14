@@ -90,7 +90,7 @@ class WatchPanel(QWidget, Exportable):
         self.def_combo.setMinimumWidth(250)
         self.def_combo.currentIndexChanged.connect(self._matchup_changed)
         bl.addWidget(self.def_combo)
-        self.alns_btn = QPushButton("Ask the professional planner")
+        self.alns_btn = QPushButton("Ask ALNS")
         self.alns_btn.setToolTip(
             "Compute the strongest industry plan for this scenario (a few seconds; "
             "the ALNS metaheuristic)")
@@ -256,7 +256,7 @@ class WatchPanel(QWidget, Exportable):
         self.map.show_instance(inst.routes, inst.edge_vuln, inst.s, inst.t)
         self.strip.reset()
         self.run_label.setText("No runs yet. Press play.")
-        self.alns_btn.setText("Ask the professional planner")
+        self.alns_btn.setText("Ask ALNS")
         self.alns_btn.setEnabled(True)
         self._refresh_defenders()
         self._show_banked()
@@ -393,14 +393,14 @@ class WatchPanel(QWidget, Exportable):
             oracle_bridge.alns_plan, inst,
             on_done=lambda result, started_on=inst: self._alns_done(result, started_on),
             on_fail=lambda tb: (self.alns_btn.setEnabled(True),
-                                self.alns_btn.setText("Ask the professional planner")),
+                                self.alns_btn.setText("Ask ALNS")),
         )
 
     def _alns_done(self, result, started_on=None) -> None:
         assignment, expl = result
         self.alns_btn.setEnabled(True)
         if started_on is not None and started_on is not self._inst:
-            self.alns_btn.setText("Ask the professional planner")
+            self.alns_btn.setText("Ask ALNS")
             return  # the scenario changed while the planner ran; discard
         self._alns_assignment = assignment
         self.alns_btn.setText(f"Planner ready (loses {lexicon.pct(expl)})")

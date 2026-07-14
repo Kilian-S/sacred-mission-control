@@ -1,6 +1,6 @@
 """Home: the pitch, the argument, the doors in.
 
-The hero IS the argument (REDESIGN.md §3.1): the professional planner on the
+The hero IS the argument (REDESIGN.md §3.1): ALNS on the
 left, SACRED on the right, both crossing the proving ground against an enemy
 who has learned their habits. The planner's habit never changes, so it keeps
 dying in the same place; SACRED has no habit to learn.
@@ -47,7 +47,7 @@ _HERO_SEEDS = {"planner": 11, "sacred": 12}
 class _HeroPanel(QWidget):
     """One side of the hero duel: a map, a legend, a tally and a hero number."""
 
-    def __init__(self, name: str, colour: str, parent=None):
+    def __init__(self, name: str, colour: str, gloss: str = "", parent=None):
         super().__init__(parent)
         self.colour = colour
         lay = QVBoxLayout(self)
@@ -65,6 +65,10 @@ class _HeroPanel(QWidget):
         title.setProperty("h3", True)
         hl.addWidget(chip)
         hl.addWidget(title)
+        if gloss:
+            g = QLabel(f"— {gloss}")
+            g.setStyleSheet(f"color: {theme.INK_MUTED}; font-size: 13px;")
+            hl.addWidget(g)
         hl.addStretch(1)
         lay.addWidget(head)
 
@@ -150,9 +154,10 @@ class HomeTab(QWidget, Exportable):
         dl = QHBoxLayout(duel_row)
         dl.setContentsMargins(0, 0, 0, 0)
         dl.setSpacing(16)
-        self.left = _HeroPanel("The professional planner",
-                               theme.STRATEGY_COLOURS["alns"])
-        self.right = _HeroPanel("SACRED", theme.STRATEGY_COLOURS["sacred"])
+        self.left = _HeroPanel("ALNS", theme.STRATEGY_COLOURS["alns"],
+                               gloss="the industry-standard route planner")
+        self.right = _HeroPanel("SACRED", theme.STRATEGY_COLOURS["sacred"],
+                                gloss="our adversarially-trained AI")
         dl.addWidget(self.left, 1)
         dl.addWidget(self.right, 1)
         hero_card.layout_().addWidget(duel_row)
