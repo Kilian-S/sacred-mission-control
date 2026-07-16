@@ -135,6 +135,35 @@ class MainWindow(QMainWindow):
                 f"Exported {len(paths)} files to {paths[0].parent}", 8000)
 
 
+def _preflight(app: QApplication) -> bool:
+    """Confirm the SACRED project data the app reads is reachable before we build
+    any tabs. If it is not, explain in plain words where we looked and how to fix
+    it, rather than opening an empty or crashing window. Returns False to abort."""
+    from .sacred_bridge.maps import available_cities
+    from .sacred_bridge.paths import SACRED_ROOT, sacred_available
+
+    if sacred_available() and available_cities():
+        return True
+
+    from PySide6.QtWidgets import QMessageBox
+
+    box = QMessageBox()
+    box.setIcon(QMessageBox.Warning)
+    box.setWindowTitle("SACRED Mission Control")
+    box.setText("I could not find the project data.")
+    box.setInformativeText(
+        "The app reads the SACRED project data, which should sit in a folder "
+        "named “sacred” right next to the app.\n\n"
+        f"I looked here:\n{SACRED_ROOT}\n\n"
+        "Please make sure the “sacred” folder is in the same place as "
+        "“sacred-mission-control”, exactly as it came out of the "
+        "download. (Advanced: you can point elsewhere by setting the "
+        "SACRED_ROOT environment variable.)")
+    box.setStandardButtons(QMessageBox.Ok)
+    box.exec()
+    return False
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="SACRED Mission Control")
     parser.add_argument("--tab", type=int, default=None, help="open on tab 1-5")
@@ -161,6 +190,11 @@ def main() -> int:
     app.setPalette(pal)
     app.setStyleSheet(theme.build_qss())
     theme.apply_matplotlib_style()
+
+    # A downloaded bundle ships the data beside the app, so this passes silently;
+    # it only speaks up if the two folders got separated.
+    if not _preflight(app):
+        return 2
 
     win = MainWindow()
     if args.tab and 1 <= args.tab <= 5:

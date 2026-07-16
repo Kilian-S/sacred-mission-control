@@ -32,15 +32,44 @@ Five tabs (Cmd+1..5):
 - **Documents**: the ledgers themselves, comfortably typeset (large type, generous line
   spacing) and searchable; the source markdown is never modified.
 
-## Install and run (two commands)
+## Run it from a fresh clone (macOS)
+
+The app is a viewer of the SACRED project data (city maps, run results, trained-AI
+checkpoints). That data is gitignored at source and is too large for git, so it is
+delivered as a **GitHub Release asset** rather than committed. After cloning:
+
+```bash
+git clone https://github.com/Kilian-S/sacred-mission-control.git
+cd sacred-mission-control
+open "setup.command"      # or double-click it in Finder
+```
+
+`setup.command` downloads the data (~400 MB, once), builds a private virtual
+environment (~2 GB, once), and launches the app. Every later run is just another
+double-click. If Finder blocks it ("unidentified developer"), right-click →
+Open the first time.
+
+Prefer the Terminal, or already have the data? The two-command path still works:
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 ./run.sh
 ```
 
-Requires the sibling `sacred/` repo (read-only data source) at `../sacred`, or set
-`SACRED_ROOT`. Python 3.13 recommended (matches sacred's environment).
+The app finds its data automatically in this order: `SACRED_ROOT` if set, else a
+sibling `../sacred` (the dev / downloadable-bundle layout), else `./sacred` inside
+the clone (what `setup.command` creates). Requires Python 3.11+ (3.13 recommended).
+
+### Maintainer: cutting a data release
+
+```bash
+scripts/make_data_asset.sh                 # builds sacred-data.zip from ../sacred
+gh release create data-v1 sacred-data.zip -t 'SACRED data' -n 'Runtime data for the app.'
+```
+
+`setup.command` always fetches the newest release's `sacred-data.zip`. A fully
+self-contained offline bundle (app + data + launcher, no clone needed) can instead
+be built with `scripts/make_bundle.sh`.
 
 ## Correctness contract
 

@@ -11,9 +11,22 @@ from pathlib import Path
 
 APP_ROOT = Path(__file__).resolve().parents[2]
 
-SACRED_ROOT = Path(
-    os.environ.get("SACRED_ROOT", APP_ROOT.parent / "sacred")
-).resolve()
+
+def _resolve_sacred_root() -> Path:
+    """Find the sacred data. Honour SACRED_ROOT if set, else prefer a sibling
+    ``../sacred`` (the development and downloadable-bundle layout); fall back to
+    ``./sacred`` inside the app (the git-clone + data-download layout)."""
+    env = os.environ.get("SACRED_ROOT")
+    if env:
+        return Path(env).resolve()
+    sibling = APP_ROOT.parent / "sacred"
+    inside = APP_ROOT / "sacred"
+    if not (sibling / "experiments").is_dir() and (inside / "experiments").is_dir():
+        return inside.resolve()
+    return sibling.resolve()
+
+
+SACRED_ROOT = _resolve_sacred_root()
 THESIS_ROOT = Path(
     os.environ.get("SACRED_THESIS_ROOT", APP_ROOT.parents[1] / "thesis")
 ).resolve()

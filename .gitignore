@@ -5,3 +5,11 @@ __pycache__/
 .DS_Store
 screenshots/*.png
 !screenshots/.gitkeep
+
+# the SACRED data is delivered as a release asset, never committed (too large,
+# and gitignored at source); setup.command downloads it into ./sacred
+/sacred/
+# built distribution artefacts (bundle / data asset)
+*.zip
+# IDE
+.idea/
